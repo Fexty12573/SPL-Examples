@@ -56,7 +56,15 @@
         
     </Window.Resources>
     <Grid>
-        <nodify:NodifyEditor>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        
+        <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
+                             Connections="{Binding Connections}"
+                             PendingConnection="{Binding PendingConnection}"
+                             Grid.Column="1">
             <nodify:NodifyEditor.DataContext>
                 <local:EditorViewModel/>
             </nodify:NodifyEditor.DataContext>

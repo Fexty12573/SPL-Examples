@@ -19,7 +19,7 @@ internal class NodeViewModel : INodeViewModel
         set => BackingNode.UniqueId = value;
     }
 
-    public NodeInputConnectorViewModel InputConnector { get; } = new("Input");
+    public NodeInputConnectorViewModel InputConnector { get; }
     public ObservableCollection<NodeOutputConnectorViewModel> OutputConnectors { get; } = [];
 
     public NodeViewModel(AIFSMNode backingNode)
@@ -27,9 +27,11 @@ internal class NodeViewModel : INodeViewModel
         BackingNode = backingNode;
         Name = BackingNode.Name;
 
+        InputConnector = new NodeInputConnectorViewModel("In", this);
+
         foreach (ref var link in BackingNode.Links)
         {
-            OutputConnectors.Add(new NodeOutputConnectorViewModel(ref link));
+            OutputConnectors.Add(new NodeOutputConnectorViewModel(ref link, this));
         }
     }
 }

@@ -16,9 +16,10 @@ internal interface IConnectorViewModel
     public bool IsConnected { get; set; }
     public Point Anchor { get; set; }
     public string Name { get; }
+    public INodeViewModel Parent { get; }
 }
 
-internal class NodeInputConnectorViewModel(string name) : IConnectorViewModel, INotifyPropertyChanged
+internal class NodeInputConnectorViewModel(string name, NodeViewModel parent) : IConnectorViewModel, INotifyPropertyChanged
 {
     public string Name { get; } = name;
 
@@ -44,11 +45,14 @@ internal class NodeInputConnectorViewModel(string name) : IConnectorViewModel, I
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public NodeViewModel Parent { get; } = parent;
+    INodeViewModel IConnectorViewModel.Parent => Parent;
+
     private bool _isConnected;
     private Point _anchor;
 }
 
-internal unsafe class NodeOutputConnectorViewModel(ref AIFSMLink link) : IConnectorViewModel, INotifyPropertyChanged
+internal unsafe class NodeOutputConnectorViewModel(ref AIFSMLink link, NodeViewModel parent) : IConnectorViewModel, INotifyPropertyChanged
 {
     public string Name
     {
@@ -84,13 +88,16 @@ internal unsafe class NodeOutputConnectorViewModel(ref AIFSMLink link) : IConnec
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public NodeViewModel Parent { get; } = parent;
+    INodeViewModel IConnectorViewModel.Parent => Parent;
+
     private string _name = link.Name;
     private Point _anchor;
     private bool _isConnected;
     private readonly AIFSMLink* _link = MemoryUtil.AsPointer(ref link);
 }
 
-internal class ConditionNodeInputConnectorViewModel(NodeOutputConnectorViewModel source)
+internal class ConditionNodeInputConnectorViewModel(NodeOutputConnectorViewModel source, ConditionNodeViewModel parent)
     : IConnectorViewModel, INotifyPropertyChanged
 {
     public string Name => "In";
@@ -116,7 +123,11 @@ internal class ConditionNodeInputConnectorViewModel(NodeOutputConnectorViewModel
         }
     }
 
+    public ConditionNodeOutputConnectorViewModel GetCorrespondingOutput() => Parent.GetCorrespondingConnector(this);
+
     public NodeOutputConnectorViewModel Source { get; set; } = source;
+    public ConditionNodeViewModel Parent { get; } = parent;
+    INodeViewModel IConnectorViewModel.Parent => Parent;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -124,7 +135,7 @@ internal class ConditionNodeInputConnectorViewModel(NodeOutputConnectorViewModel
     private Point _anchor;
 }
 
-internal class ConditionNodeOutputConnectorViewModel : IConnectorViewModel, INotifyPropertyChanged
+internal class ConditionNodeOutputConnectorViewModel(ConditionNodeViewModel parent) : IConnectorViewModel, INotifyPropertyChanged
 {
     public string Name => "Out";
     public Brush Color { get; set; } = Brushes.Red;
@@ -148,6 +159,11 @@ internal class ConditionNodeOutputConnectorViewModel : IConnectorViewModel, INot
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Anchor)));
         }
     }
+
+    public ConditionNodeInputConnectorViewModel GetCorrespondingInput() => Parent.GetCorrespondingConnector(this);
+
+    public ConditionNodeViewModel Parent { get; } = parent;
+    INodeViewModel IConnectorViewModel.Parent => Parent;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
