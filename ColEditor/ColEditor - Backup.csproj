@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Twizzle.ImNodes.NET" Version="1.89.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ImNodes.NET">
+      <HintPath>bin\Debug\net8.0\ImNodes.NET.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpPluginLoader.Core.Debug">
+      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

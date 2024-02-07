@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ImGui.NET" Version="1.90.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="SharpPluginLoader.Core.Debug">
+      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
