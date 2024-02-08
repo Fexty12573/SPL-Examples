@@ -22,7 +22,6 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Nodify" Version="5.1.0" />
-    <PackageReference Include="SharpPluginLoader.Core" Version="0.0.2" />
   </ItemGroup>
 
 </Project>

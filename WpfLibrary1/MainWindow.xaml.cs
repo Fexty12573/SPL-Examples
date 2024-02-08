@@ -28,6 +28,11 @@ public partial class MainWindow : Window
 
     private void Button_Click(object sender, RoutedEventArgs e)
     {
-        LoadFsm = true;
+        var testFsm = ResourceManager.GetResource<Resource>(@"hm\wp\wp11\wp11_action", MtDti.Find("rAIFSM")!);
+        Ensure.NotNull(testFsm);
+
+        var fsm = new AIFSM(testFsm.Instance);
+
+        ((EditorViewModel)NodifyEditor.DataContext).LoadFsm(fsm);
     }
 }

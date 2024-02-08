@@ -69,12 +69,11 @@ public unsafe class Plugin : IPlugin
             Ensure.NotNull(testFsm);
 
             var fsm = new AIFSM(testFsm.Instance);
-            Ensure.NotNull(fsm.RootCluster);
-            Log.Info($"{fsm.FilePath} Nodes:");
-            foreach (var node in fsm.RootCluster.Nodes)
+
+            Window.Dispatcher.Invoke(() =>
             {
-                Log.Info(node.Name);
-            }
+                ((EditorViewModel)Window.NodifyEditor.DataContext).LoadFsm(fsm);
+            });
         }
     }
 

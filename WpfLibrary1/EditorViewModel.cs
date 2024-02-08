@@ -24,6 +24,7 @@ internal class EditorViewModel
     {
         _fsm = fsm;
         Nodes.Clear();
+        Connections.Clear();
 
         var rootCluster = fsm.RootCluster;
         if (rootCluster is null)
@@ -84,7 +85,7 @@ internal class EditorViewModel
                 source = node.OutputConnectors[i];
                 target = new ConditionNodeInputConnectorViewModel(source, condition);
 
-                Connections.Add(new ConnectionViewModel(source, target));
+                Connect(source, target);
                 
                 var conditionSource = new ConditionNodeOutputConnectorViewModel(condition);
                 var conditionTarget = targetNode?.InputConnector;
@@ -98,7 +99,7 @@ internal class EditorViewModel
                     continue;
                 }
 
-                Connections.Add(new ConnectionViewModel(conditionSource, conditionTarget));
+                Connect(conditionSource, conditionTarget);
             }
         }
     }

@@ -8,65 +8,87 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Window.Resources>
-        
-        <DataTemplate DataType="{x:Type local:NodeViewModel}">
-            <nodify:Node Header="{Binding Id}"/>
-        </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:ConditionNodeViewModel}">
-            <nodify:Node Header="{Binding Name}" Background="LightGreen"/>
-        </DataTemplate>
 
-        <DataTemplate DataType="{x:Type local:NodeInputConnectorViewModel}">
+        <local:ItemToListConverter x:Key="ItemToListConverter"/>
+
+        <DataTemplate DataType="{x:Type local:NodeInputConnectorViewModel}" x:Key="NodeInputConnectorTemplate">
             <nodify:NodeInput Header="{Binding Name}"
                               IsConnected="{Binding IsConnected}"
                               Anchor="{Binding Anchor, Mode=OneWayToSource}"/>
         </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:NodeOutputConnectorViewModel}">
+
+        <DataTemplate DataType="{x:Type local:NodeOutputConnectorViewModel}" x:Key="NodeOutputConnectorTemplate">
             <nodify:NodeOutput Header="{Binding Name}"
                                IsConnected="{Binding IsConnected}"
                                Anchor="{Binding Anchor, Mode=OneWayToSource}"/>
         </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:ConditionNodeInputConnectorViewModel}">
+
+        <DataTemplate DataType="{x:Type local:NodeViewModel}" x:Key="NodeTemplate">
+            <nodify:Node Header="{Binding Name}"
+                         Input="{Binding InputConnector, Converter={StaticResource ItemToListConverter}}"
+                         Output="{Binding OutputConnectors}"
+                         InputConnectorTemplate="{StaticResource ResourceKey=NodeInputConnectorTemplate}"
+                         OutputConnectorTemplate="{StaticResource ResourceKey=NodeOutputConnectorTemplate}">
+            </nodify:Node>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type local:ConditionNodeInputConnectorViewModel}" x:Key="ConditionInputConnectorTemplate">
             <nodify:NodeInput Header="{Binding Name}"
                               IsConnected="{Binding IsConnected}"
                               Anchor="{Binding Anchor, Mode=OneWayToSource}"
                               Background="{Binding Color}"/>
         </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:ConditionNodeOutputConnectorViewModel}">
+
+        <DataTemplate DataType="{x:Type local:ConditionNodeOutputConnectorViewModel}" x:Key="ConditionOutputConnectorTemplate">
             <nodify:NodeOutput Header="{Binding Name}"
                                IsConnected="{Binding IsConnected}"
                                Anchor="{Binding Anchor, Mode=OneWayToSource}"
                                Background="{Binding Color}"/>
         </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:ConnectionViewModel}">
+
+        <DataTemplate DataType="{x:Type local:ConditionNodeViewModel}" x:Key="ConditionNodeTemplate">
+            <nodify:Node Header="{Binding Name}" Background="LightGreen"
+                         Input="{Binding InputConnectors}"
+                         Output="{Binding OutputConnectors}"
+                         InputConnectorTemplate="{StaticResource ResourceKey=ConditionInputConnectorTemplate}"
+                         OutputConnectorTemplate="{StaticResource ResourceKey=ConditionOutputConnectorTemplate}">
+            </nodify:Node>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type local:ConnectionViewModel}" x:Key="ConnectionTemplate">
             <nodify:LineConnection Source="{Binding Source.Anchor}"
                                    Target="{Binding Target.Anchor}"/>
         </DataTemplate>
-        
-        <DataTemplate DataType="{x:Type local:PendingConnectionViewModel}">
+
+        <DataTemplate DataType="{x:Type local:PendingConnectionViewModel}" x:Key="PendingConnectionTemplate">
             <nodify:PendingConnection StartedCommand="{Binding StartCommand}"
                                       CompletedCommand="{Binding EndCommand}"
                                       AllowOnlyConnectors="True"/>
         </DataTemplate>
-        
+
+        <local:NodeDataTemplateSelector x:Key="NodeTemplateSelector"
+                                        ActionNodeTemplate="{StaticResource NodeTemplate}"
+                                        ConditionNodeTemplate="{StaticResource ConditionNodeTemplate}"/>
+
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        
+
+        <Button Content="Load FSM" Click="Button_Click"/>
+
         <nodify:NodifyEditor ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              PendingConnection="{Binding PendingConnection}"
-                             Grid.Column="1">
+                             ConnectionTemplate="{StaticResource ConnectionTemplate}"
+                             PendingConnectionTemplate="{StaticResource PendingConnectionTemplate}"
+                             ItemTemplateSelector="{StaticResource NodeTemplateSelector}"
+                             Grid.Column="1"
+                             x:Name="NodifyEditor">
             <nodify:NodifyEditor.DataContext>
-                <local:EditorViewModel/>
+                <local:EditorViewModel x:Name="FsmEditor"/>
             </nodify:NodifyEditor.DataContext>
         </nodify:NodifyEditor>
     </Grid>

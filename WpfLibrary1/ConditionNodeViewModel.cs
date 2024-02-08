@@ -13,7 +13,7 @@ using ConditionNodeConnectorPair = (ConditionNodeInputConnectorViewModel, Condit
 internal unsafe class ConditionNodeViewModel(ref AIConditionTreeInfo conditionTreeInfo) : INodeViewModel
 {
     public uint Id => _conditionTreeInfo->Name.Id;
-    public string Name { get; set; } = $"{conditionTreeInfo.Name.Id}: {conditionTreeInfo.Name.Name}";
+    public string Name { get; set; } = conditionTreeInfo.Name.Id.ToString();
 
     public ObservableCollection<ConditionNodeInputConnectorViewModel> InputConnectors { get; } = [];
     public ObservableCollection<ConditionNodeOutputConnectorViewModel> OutputConnectors { get; } = [];

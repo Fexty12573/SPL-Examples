@@ -14,10 +14,10 @@ public class DelegateCommand(Action action, Func<bool>? executeCondition = defau
 
     public event EventHandler? CanExecuteChanged;
 
-    public bool CanExecute(object parameter)
+    public bool CanExecute(object? parameter)
         => executeCondition?.Invoke() ?? true;
 
-    public void Execute(object parameter)
+    public void Execute(object? parameter)
         => _action();
 
     public void RaiseCanExecuteChanged()
