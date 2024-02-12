@@ -165,39 +165,7 @@ public class XFsmEditor
                 NodeEditor.SetNodePosition(node.Id, node.Position);
             }
 
-            NodeEditor.BeginNode(node.Id);
-            ImGui.Text(node.Name);
-
-            ImGui.Separator();
-
-            var outputPinName = $"{node.OutputPin.Name} {FA6.SquareCaretRight}";
-            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(0f, .5f));
-            NodeEditor.BeginPin(node.InputPin.Id, PinKind.Input);
-            ImGui.TextColored(new Vector4(1f, 1f, 0.3f, 1f), $"{FA6.SquareCaretRight} {node.InputPin.Name}");
-            NodeEditor.EndPin();
-
-            NodeEditor.PopStyleVar();
-
-            ImGui.SameLine();
-
-            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(1f, .5f));
-
-            // Right-align the output pin
-            var textLength = ImGui.CalcTextSize(outputPinName).X;
-            var nodeNameLength = ImGui.CalcTextSize(node.Name).X;
-            ImGui.SetCursorPosX(ImGui.GetCursorPosX() - textLength);
             
-
-            NodeEditor.BeginPin(node.OutputPin.Id, PinKind.Output);
-            ImGui.TextColored(new Vector4(0.3f, 1f, 1f, 1f), $"{node.OutputPin.Name} {FA6.SquareCaretRight}");
-            NodeEditor.EndPin();
-
-            NodeEditor.PopStyleVar();
-
-            // Draw info about the node
-            // ...
-            
-            NodeEditor.EndNode();
         }
 
         foreach (var link in _links)
@@ -207,6 +175,15 @@ public class XFsmEditor
 
         NodeEditor.End();
         NodeEditor.SetCurrentEditor(0);
+    }
+
+    private void ShowSidePanel()
+    {
+        ImGui.Begin("Properties");
+
+
+
+        ImGui.End();
     }
 
     private void ShowStyleEditor()
@@ -246,6 +223,42 @@ public class XFsmEditor
             }
         }
         ImGui.End();
+    }
+
+    private void ShowNode(XFsmNode node)
+    {
+        NodeEditor.BeginNode(node.Id);
+        ImGui.Text(node.Name);
+
+
+        var outputPinName = $"{node.OutputPin.Name} {FA6.SquareCaretRight}";
+        NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(0f, .5f));
+        NodeEditor.BeginPin(node.InputPin.Id, PinKind.Input);
+        ImGui.TextColored(new Vector4(1f, 1f, 0.3f, 1f), $"{FA6.SquareCaretRight} {node.InputPin.Name}");
+        NodeEditor.EndPin();
+
+        NodeEditor.PopStyleVar();
+
+        ImGui.SameLine();
+
+        NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(1f, .5f));
+
+        // Right-align the output pin
+        var textLength = ImGui.CalcTextSize(outputPinName).X;
+        var nodeNameLength = ImGui.CalcTextSize(node.Name).X;
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() - textLength);
+
+
+        NodeEditor.BeginPin(node.OutputPin.Id, PinKind.Output);
+        ImGui.TextColored(new Vector4(0.3f, 1f, 1f, 1f), $"{node.OutputPin.Name} {FA6.SquareCaretRight}");
+        NodeEditor.EndPin();
+
+        NodeEditor.PopStyleVar();
+
+        // Draw info about the node
+        // ...
+
+        NodeEditor.EndNode();
     }
 
     private XFsmNode? GetNodeById(int id)
