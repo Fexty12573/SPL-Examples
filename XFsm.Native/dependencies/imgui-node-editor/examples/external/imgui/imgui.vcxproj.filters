@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui.cpp" />
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui_demo.cpp" />
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui_draw.cpp" />
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui_tables.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imconfig.h" />
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui.h" />
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui_internal.h" />
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imstb_rectpack.h" />
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imstb_textedit.h" />
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imstb_truetype.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\imgui.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\imgui\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+</Project>

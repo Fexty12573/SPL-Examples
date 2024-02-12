@@ -13,24 +13,43 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="framework.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <Filter Include="Source Files\ImGui">
+      <UniqueIdentifier>{598edd9c-a693-414e-8999-9a6bb3fc0961}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ImGuiNodeEditor">
+      <UniqueIdentifier>{9b923b19-e93b-443e-8c76-6003a16a8258}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="dependencies\imgui\imgui.cpp">
+      <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="vcpkg.json" />
+    <ClCompile Include="dependencies\imgui\imgui_demo.cpp">
+      <Filter>Source Files\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui\imgui_draw.cpp">
+      <Filter>Source Files\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui\imgui_tables.cpp">
+      <Filter>Source Files\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui-node-editor\crude_json.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui-node-editor\imgui_canvas.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor_api.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

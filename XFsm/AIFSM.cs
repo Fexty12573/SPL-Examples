@@ -53,9 +53,9 @@ public class AIFSMNode : AIFSMObject
 public unsafe struct AIFSMLink
 {
     [FieldOffset(0x00)] public nint VTable;
-    [FieldOffset(0x08)] public uint DestinationNodeId;
+    [FieldOffset(0x08)] public int DestinationNodeId;
     [FieldOffset(0x0C)] public bool HasCondition;
-    [FieldOffset(0x10)] public uint ConditionId;
+    [FieldOffset(0x10)] public int ConditionId;
     [FieldOffset(0x18)] public MtString* NamePtr;
 
     public string Name

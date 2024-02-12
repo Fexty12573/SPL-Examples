@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\blueprints-example.cpp" />
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\builders.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.cpp">
+      <Filter>utilities</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\builders.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.h">
+      <Filter>utilities</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\data\BlueprintBackground.png">
+      <Filter>data</Filter>
+    </Image>
+    <Image Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\data\ic_restore_white_24dp.png">
+      <Filter>data</Filter>
+    </Image>
+    <Image Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\data\ic_save_white_24dp.png">
+      <Filter>data</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Cuprum-Bold.ttf">
+      <Filter>data</Filter>
+    </None>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Cuprum-OFL.txt">
+      <Filter>data</Filter>
+    </None>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Oswald-OFL.txt">
+      <Filter>data</Filter>
+    </None>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Oswald-Regular.ttf">
+      <Filter>data</Filter>
+    </None>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Play-OFL.txt">
+      <Filter>data</Filter>
+    </None>
+    <None Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\data\Play-Regular.ttf">
+      <Filter>data</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\blueprints-example\Resource.rc">
+      <Filter>resources</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="data">
+      <UniqueIdentifier>{6388BD65-3FD1-3E62-A2F8-97623CEEAD2B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="resources">
+      <UniqueIdentifier>{71D22CCF-3574-33D4-98A2-F3D793E4A17F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utilities">
+      <UniqueIdentifier>{82B2151F-EA48-38E8-8C12-8E1D79C0E1D2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

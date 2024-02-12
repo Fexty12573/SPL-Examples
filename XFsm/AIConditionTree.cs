@@ -141,7 +141,7 @@ public unsafe struct AIDEnum
 {
     public nint VTable;
     public MtString* NamePtr;
-    public uint Id;
+    public int Id;
 
     public string Name => NamePtr->GetString();
 }

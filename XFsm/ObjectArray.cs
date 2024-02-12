@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using SharpPluginLoader.Core;
 
 namespace XFsm;
@@ -33,5 +34,19 @@ public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> whe
         {
             _index = -1;
         }
+    }
+}
+
+public static class Extensions
+{
+    public static int IndexOf<T>(this PointerArray<T> array, ref T value) where T : unmanaged
+    {
+        for (var i = 0; i < array.Length; i++)
+        {
+            if (Unsafe.AreSame(ref array[i], ref value))
+                return i;
+        }
+
+        return -1;
     }
 }

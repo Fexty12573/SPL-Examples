@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\application.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\entry_point.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\platform_win32.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\platform_glfw.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\renderer_dx11.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\renderer_ogl3.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\imgui_impl_dx11.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\imgui_impl_win32.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\include\application.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\imgui_extra_keys.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\config.h.in">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\setup.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\platform.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\renderer.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\imgui_impl_dx11.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\source\imgui_impl_win32.h">
+      <Filter>source</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\stb_image\stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\external\ScopeGuard\ScopeGuard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="F:\source\repos\SharpPluginLoaderExamples\XFsm.Native\dependencies\imgui-node-editor\examples\application\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{54003F64-20A4-3E76-843B-9CCEF6232B1A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{87B001BC-8AD7-3B9E-AD94-D86F81BFF323}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{95C6F553-E96D-353C-A5F4-AF676DAF0433}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

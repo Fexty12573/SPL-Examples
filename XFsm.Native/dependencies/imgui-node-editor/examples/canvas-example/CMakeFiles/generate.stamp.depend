@@ -1,0 +1,8 @@
+# CMake generation dependency list for this directory.
+C:/Program Files/CMake/share/cmake-3.26/Modules/FindPackageHandleStandardArgs.cmake
+C:/Program Files/CMake/share/cmake-3.26/Modules/FindPackageMessage.cmake
+F:/source/repos/SharpPluginLoaderExamples/XFsm.Native/dependencies/imgui-node-editor/examples/CMakeFiles/cmake.verify_globs
+F:/source/repos/SharpPluginLoaderExamples/XFsm.Native/dependencies/imgui-node-editor/examples/application/support/Resource.rc.in
+F:/source/repos/SharpPluginLoaderExamples/XFsm.Native/dependencies/imgui-node-editor/examples/canvas-example/CMakeLists.txt
+F:/source/repos/SharpPluginLoaderExamples/XFsm.Native/dependencies/imgui-node-editor/misc/cmake-modules/Findimgui.cmake
+F:/source/repos/SharpPluginLoaderExamples/XFsm.Native/dependencies/imgui-node-editor/misc/cmake-modules/Findimgui_node_editor.cmake

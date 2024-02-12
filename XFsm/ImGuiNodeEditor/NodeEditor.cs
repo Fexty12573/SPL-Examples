@@ -14,6 +14,18 @@ using EditorContextPtr = nint;
 public static unsafe partial class InternalCalls
 {
     [InternalCall]
+    public static partial void RenderDocTriggerCapture();
+
+    [InternalCall]
+    public static partial bool InjectRenderDoc([WideString] string dllPath);
+
+    [InternalCall]
+    public static partial void ShowStyleEditor(in bool show = true);
+
+    [InternalCall]
+    public static partial void SetCurrentImGuiContext(nint ctx);
+
+    [InternalCall]
     public static partial void SetCurrentEditor(EditorContextPtr ctx);
 
     [InternalCall]
@@ -21,7 +33,7 @@ public static unsafe partial class InternalCalls
 
     
     [InternalCall]
-    private static partial EditorContextPtr CreateEditor(Config.NativeConfig* config = null);
+    public static partial EditorContextPtr CreateEditor(Config.NativeConfig* config);
 
     public static EditorContextPtr CreateEditor(Config? config = null)
     {
@@ -32,7 +44,7 @@ public static unsafe partial class InternalCalls
     public static partial void DestroyEditor(EditorContextPtr ctx);
     
     [InternalCall] // TODO: Expose
-    private static partial Config.NativeConfig* GetConfig(EditorContextPtr ctx = 0);
+    public static partial Config.NativeConfig* GetConfig(EditorContextPtr ctx = 0);
     
     [InternalCall]
     public static partial ref Style GetStyle();
@@ -552,7 +564,7 @@ public unsafe class Config
     internal NativeConfig* _nativeConfig;
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct NativeConfig
+    public struct NativeConfig
     {
         public sbyte* SettingsFile;
         public nint BeginSaveSession;
