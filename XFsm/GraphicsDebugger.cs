@@ -12,6 +12,7 @@ public partial class Plugin
 {
     public void OnWinMain()
     {
+        return;
         //_patch = new Patch((nint)0x142597361, [0x48, 0xE9, 0xC7, 0x00, 0x00, 0x00], true);
         Log.Info("Attempting to inject RenderDoc...");
 
@@ -27,6 +28,7 @@ public partial class Plugin
 
     public void OnUpdate(float deltaTime)
     {
+        return;
         if (KeyBindings.IsPressed("DoCapture"))
         {
             ImGuiNodeEditor.InternalCalls.RenderDocTriggerCapture();

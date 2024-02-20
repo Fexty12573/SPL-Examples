@@ -1,11 +1,14 @@
 ﻿using SharpPluginLoader.Core;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using IconFonts;
 using XFsm.ImGuiNodeEditor;
 using ImGuiNET;
 using SharpPluginLoader.Core.Memory;
 using Microsoft.CodeAnalysis;
+using SharpPluginLoader.Core.MtTypes;
+using SharpPluginLoader.Core.Rendering;
 
 namespace XFsm;
 
@@ -20,10 +23,14 @@ public class XFsmEditor
     private readonly List<XFsmNode> _nodes = [];
     private readonly List<XFsmLink> _links = [];
 
+    private TextureHandle _blueprintHeaderBg;
+    private uint _headerBgWidth;
+    private uint _headerBgHeight;
+
     private readonly Random _random = new();
     private float _lR = 2f;
     private float _lA = 100f;
-    private bool _applyLayout = true;
+    private bool _applyLayout = false;
     private float _maxArea = 130f;
 
     private float _rF = 1000f;
@@ -36,7 +43,7 @@ public class XFsmEditor
         {
             NodeEditor.SetCurrentImGuiContext(ImGui.GetCurrentContext());
             _ctx = NodeEditor.CreateEditor();
-
+            
             NodeEditor.SetCurrentEditor(_ctx);
 
             ref var style = ref NodeEditor.GetStyle();
@@ -52,6 +59,12 @@ public class XFsmEditor
             style.Colors[(int)StyleColor.NodeBorder] = ImGui.ColorConvertU32ToFloat4(0xFFFFFFFF);
             
             NodeEditor.SetCurrentEditor(0);
+
+            _blueprintHeaderBg = Renderer.LoadTexture("nativePC/plugins/CSharp/XFsm/Assets/BlueprintBackground.png", out _headerBgWidth, out _headerBgHeight);
+            if (_blueprintHeaderBg == TextureHandle.Invalid)
+            {
+                Log.Error("Failed to load BlueprintBackground.png");
+            }
         }
 
         if (fsm.RootCluster is null)
@@ -80,6 +93,9 @@ public class XFsmEditor
                 _links.Add(new XFsmLink(node.OutputPin, target.InputPin, ref link));
             }
         }
+
+        Log.Info($"Successfully loaded FSM into Editor");
+        Log.Info($"Nodes: {_nodes.Count}, Links: {_links.Count}");
     }
 
     public void Render()
@@ -94,7 +110,7 @@ public class XFsmEditor
 
         if (ImGui.Button("Randomize Positions"))
         {
-            _applyLayout = true;
+            _applyLayout = false;
 
             foreach (var node in _nodes)
             {
@@ -148,56 +164,59 @@ public class XFsmEditor
         ImGui.SetNextItemWidth(availX * 0.2f);
         ImGui.DragFloat("Spring Force", ref _sF, 0.1f);
 
-        if (_applyLayout)
+        if (ImGui.Button("Apply Layout"))
         {
-            _applyLayout = SpringEmbedder.Layout(
+            SpringEmbedder.Layout(
                 _nodes, CollectionsMarshal.AsSpan(_links),
                 _rF, _l, _sF
             );
+
+            foreach (var node in _nodes)
+            {
+                NodeEditor.SetNodePosition(node.Id, node.Position);
+            }
         }
 
         NodeEditor.Begin("XFSM Editor");
 
+        var style = ImGui.GetStyle();
+        var drawList = ImGui.GetWindowDrawList();
+        var builder = new NodeBuilder(_blueprintHeaderBg, _headerBgWidth, _headerBgHeight);
+
         foreach (var node in _nodes)
         {
-            if (_applyLayout)
+            builder.Begin(node.Id);
+            builder.Header();
             {
-                NodeEditor.SetNodePosition(node.Id, node.Position);
+                ImGui.Spring(0);
+                ImGui.TextUnformatted(node.Name);
+                ImGui.Spring(1);
+                ImGui.Dummy(new Vector2(0, 28));
+            }
+            builder.EndHeader();
+
+            builder.Input(node.InputPin.Id);
+            {
+                ImGui.TextUnformatted(node.InputPin.Name);
+                ImGui.Spring(0);
+            }
+            builder.EndInput();
+
+            builder.Middle();
+            {
+                ImGui.Spring(1, 0);
+                ImGui.TextUnformatted("Middle");
+                ImGui.Spring(1, 0);
             }
 
-            NodeEditor.BeginNode(node.Id);
-            ImGui.Text(node.Name);
-
-            ImGui.Separator();
-
-            var outputPinName = $"{node.OutputPin.Name} {FA6.SquareCaretRight}";
-            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(0f, .5f));
-            NodeEditor.BeginPin(node.InputPin.Id, PinKind.Input);
-            ImGui.TextColored(new Vector4(1f, 1f, 0.3f, 1f), $"{FA6.SquareCaretRight} {node.InputPin.Name}");
-            NodeEditor.EndPin();
-
-            NodeEditor.PopStyleVar();
-
-            ImGui.SameLine();
-
-            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(1f, .5f));
-
-            // Right-align the output pin
-            var textLength = ImGui.CalcTextSize(outputPinName).X;
-            var nodeNameLength = ImGui.CalcTextSize(node.Name).X;
-            ImGui.SetCursorPosX(ImGui.GetCursorPosX() - textLength);
+            builder.Output(node.OutputPin.Id);
+            {
+                ImGui.TextUnformatted(node.OutputPin.Name);
+                ImGui.Spring(0);
+            }
+            builder.EndOutput();
             
-
-            NodeEditor.BeginPin(node.OutputPin.Id, PinKind.Output);
-            ImGui.TextColored(new Vector4(0.3f, 1f, 1f, 1f), $"{node.OutputPin.Name} {FA6.SquareCaretRight}");
-            NodeEditor.EndPin();
-
-            NodeEditor.PopStyleVar();
-
-            // Draw info about the node
-            // ...
-            
-            NodeEditor.EndNode();
+            builder.End();
         }
 
         foreach (var link in _links)
@@ -205,8 +224,64 @@ public class XFsmEditor
             NodeEditor.Link(link.Id, link.Source.Id, link.Target.Id);
         }
 
+        //if (NodeEditor.BeginCreate(new Vector4(1, 1, 1, 1), 2.0f))
+        //{
+        //    if (NodeEditor.QueryNewLink(out var startPinId, out var endPinId))
+        //    {
+        //        var startPin = GetPinById(startPinId);
+        //        var endPin = GetPinById(endPinId);
+
+        //        if (startPin is XFsmInputPin && endPin is XFsmOutputPin)
+        //        {
+        //            (startPin, endPin) = (endPin, startPin);
+        //        }
+
+        //        if (startPin is not null && endPin is not null)
+        //        {
+        //            if (startPin == endPin)
+        //            {
+        //                NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
+        //            }
+        //            else if (startPin.GetType() == endPin.GetType())
+        //            {
+        //                ShowLabel($"{FA6.Cross} Incompatible Pin Kind", new MtColor(45, 32, 32, 180));
+        //                NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
+        //            }
+        //            else
+        //            {
+        //                ShowLabel($"{FA6.Plus} Create Link", new MtColor(32, 45, 32, 180));
+        //                if (NodeEditor.AcceptNewItemEx(new Vector4(0.5f, 1, 0.5f, 1), 4.0f))
+        //                {
+        //                    _links.Add(new XFsmLink((XFsmOutputPin)startPin, (XFsmInputPin)endPin, ref Unsafe.NullRef<AIFSMLink>()));
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //    NodeEditor.EndCreate();
+        //}
+
         NodeEditor.End();
         NodeEditor.SetCurrentEditor(0);
+
+        return;
+
+        void ShowLabel(string label, MtColor color)
+        {
+            ImGui.SetCursorPosY(ImGui.GetCursorPosY() - ImGui.GetTextLineHeight());
+            var size = ImGui.CalcTextSize(label);
+
+            var padding = style.FramePadding;
+            var spacing = style.ItemSpacing;
+
+            ImGui.SetCursorPos(ImGui.GetCursorPos() + spacing with { Y = -spacing.Y });
+
+            var rectMin = ImGui.GetCursorScreenPos() - padding;
+            var rectMax = ImGui.GetCursorScreenPos() + size + padding;
+
+            drawList.AddRectFilled(rectMin, rectMax, color, size.Y * 0.15f);
+            ImGui.TextUnformatted(label);
+        }
     }
 
     private void ShowStyleEditor()
@@ -251,6 +326,20 @@ public class XFsmEditor
     private XFsmNode? GetNodeById(int id)
     {
         return _nodes.FirstOrDefault(x => x.Id == id);
+    }
+
+    private XFsmPin? GetPinById(nint id)
+    {
+        foreach (var node in _nodes)
+        {
+            if (node.InputPin.Id == id)
+                return node.InputPin;
+
+            if (node.OutputPin.Id == id)
+                return node.OutputPin;
+        }
+
+        return null;
     }
 
     public static nint MakeLinkId(XFsmNode source, XFsmNode target)
@@ -301,7 +390,7 @@ public class XFsmInputPin(XFsmNode parent) : XFsmPin("Input", XFsmEditor.MakeInp
     public XFsmNode Parent { get; } = parent;
 }
 
-public class XFsmOutputPin(XFsmNode parent) : XFsmPin("Input", XFsmEditor.MakeOutputPinId(parent.BackingNode))
+public class XFsmOutputPin(XFsmNode parent) : XFsmPin("Output", XFsmEditor.MakeOutputPinId(parent.BackingNode))
 {
     public XFsmNode Parent { get; } = parent;
 }

@@ -71,10 +71,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)XFsm\bin\$(Configuration)\net8.0\</OutDir>
+    <OutDir>$(SolutionDir)XFsm\bin\$(Configuration)\net8.0-windows\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)XFsm\bin\$(Configuration)\net8.0\</OutDir>
+    <OutDir>$(SolutionDir)XFsm\bin\$(Configuration)\net8.0-windows\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -132,7 +132,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)dependencies;$(ProjectDir)dependencies\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies;$(SolutionDir)dependencies\imgui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -152,7 +152,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)dependencies;$(ProjectDir)dependencies\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)dependencies;$(SolutionDir)dependencies\imgui</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -163,15 +163,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="dependencies\imgui-node-editor\crude_json.cpp" />
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_canvas.cpp" />
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor.cpp" />
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor_api.cpp" />
-    <ClCompile Include="dependencies\imgui\imgui.cpp" />
-    <ClCompile Include="dependencies\imgui\imgui_demo.cpp" />
-    <ClCompile Include="dependencies\imgui\imgui_draw.cpp" />
-    <ClCompile Include="dependencies\imgui\imgui_tables.cpp" />
-    <ClCompile Include="dependencies\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\crude_json.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_canvas.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor_api.cpp" />
+    <ClCompile Include="..\dependencies\imgui\imgui.cpp" />
+    <ClCompile Include="..\dependencies\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\dependencies\imgui\imgui_stacklayout.cpp" />
+    <ClCompile Include="..\dependencies\imgui\imgui_tables.cpp" />
+    <ClCompile Include="..\dependencies\imgui\imgui_widgets.cpp" />
     <ClCompile Include="dllmain.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

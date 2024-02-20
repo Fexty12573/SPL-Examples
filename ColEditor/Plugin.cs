@@ -236,19 +236,19 @@ public partial class Plugin : IPlugin
             goto Exit;
         }
 
-        //if (ImGui.CollapsingHeader("Singleton Stuff"))
-        //{
-        //    if (ImGui.InputText("Singleton Name", ref _singletonName, 0x80))
-        //    {
-        //        var singleton = SingletonManager.GetSingleton(_singletonName);
-        //        if (singleton is not null)
-        //            _imGuiDti.Object = singleton;
-        //    }
+        if (ImGui.CollapsingHeader("Singleton Stuff"))
+        {
+            if (ImGui.InputText("Singleton Name", ref _singletonName, 0x80))
+            {
+                var singleton = SingletonManager.GetSingleton(_singletonName);
+                if (singleton is not null)
+                    _imGuiDti.Object = singleton;
+            }
 
-        //    ImGui.InputText("Filter", ref _propFilter, 0x80);
+            ImGui.InputText("Filter", ref _propFilter, 0x80);
 
-        //    _imGuiDti.Draw(_propFilter);
-        //}
+            _imGuiDti.Draw(_propFilter);
+        }
 
         if (ImGui.BeginMenuBar())
         {

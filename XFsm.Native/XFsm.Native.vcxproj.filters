@@ -24,31 +24,31 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui\imgui.cpp">
+    <ClCompile Include="..\dependencies\imgui\imgui.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui\imgui_demo.cpp">
+    <ClCompile Include="..\dependencies\imgui\imgui_draw.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui\imgui_draw.cpp">
+    <ClCompile Include="..\dependencies\imgui\imgui_stacklayout.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui\imgui_tables.cpp">
+    <ClCompile Include="..\dependencies\imgui\imgui_tables.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui\imgui_widgets.cpp">
+    <ClCompile Include="..\dependencies\imgui\imgui_widgets.cpp">
       <Filter>Source Files\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui-node-editor\crude_json.cpp">
+    <ClCompile Include="..\dependencies\imgui-node-editor\crude_json.cpp">
       <Filter>Source Files\ImGuiNodeEditor</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_canvas.cpp">
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_canvas.cpp">
       <Filter>Source Files\ImGuiNodeEditor</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor.cpp">
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor.cpp">
       <Filter>Source Files\ImGuiNodeEditor</Filter>
     </ClCompile>
-    <ClCompile Include="dependencies\imgui-node-editor\imgui_node_editor_api.cpp">
+    <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor_api.cpp">
       <Filter>Source Files\ImGuiNodeEditor</Filter>
     </ClCompile>
   </ItemGroup>
