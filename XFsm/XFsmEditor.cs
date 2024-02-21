@@ -118,6 +118,8 @@ public class XFsmEditor
                     (_random.NextSingle() - 0.5f) * _maxArea,
                     (_random.NextSingle() - 0.5f) * _maxArea
                 );
+
+                NodeEditor.SetNodePosition(node.Id, node.Position);
             }
         }
 

@@ -22,7 +22,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XFsm", "XFsm\XFsm.csproj", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XFsm.Native", "XFsm.Native\XFsm.Native.vcxproj", "{C15D97FA-AD7C-4D77-A828-10358D07123B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TwitchLibTest", "TwitchLibTest\TwitchLibTest.csproj", "{1D6AEF26-5926-4AE9-A2B5-68619FF32302}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TwitchLibTest", "TwitchLibTest\TwitchLibTest.csproj", "{1D6AEF26-5926-4AE9-A2B5-68619FF32302}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduLayer", "ScheduLayer\ScheduLayer.csproj", "{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -212,6 +214,22 @@ Global
 		{1D6AEF26-5926-4AE9-A2B5-68619FF32302}.Release|x64.Build.0 = Release|Any CPU
 		{1D6AEF26-5926-4AE9-A2B5-68619FF32302}.Release|x86.ActiveCfg = Release|Any CPU
 		{1D6AEF26-5926-4AE9-A2B5-68619FF32302}.Release|x86.Build.0 = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|x64.Build.0 = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Debug|x86.Build.0 = Debug|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|ARM64.Build.0 = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|x64.ActiveCfg = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|x64.Build.0 = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|x86.ActiveCfg = Release|Any CPU
+		{BFB2C2FF-3DFB-423E-BD7E-BD42AEF74D39}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

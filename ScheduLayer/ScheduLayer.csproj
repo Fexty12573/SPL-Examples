@@ -1,18 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseWPF>true</UseWPF>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="ImGuiNodeEditor\Detail\**" />
-    <EmbeddedResource Remove="ImGuiNodeEditor\Detail\**" />
-    <None Remove="ImGuiNodeEditor\Detail\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="SharpPluginLoader.ImGui" Version="1.90.2" />
