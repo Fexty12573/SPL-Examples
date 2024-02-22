@@ -14,7 +14,8 @@
 
   <ItemGroup>
     <Reference Include="SharpPluginLoader.Core.Debug">
-      <HintPath>..\..\SharpPluginLoader\SharpPluginLoader.Core\bin\Debug\net8.0\SharpPluginLoader.Core.Debug.dll</HintPath>
+      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
 

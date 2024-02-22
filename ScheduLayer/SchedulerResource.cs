@@ -136,7 +136,7 @@ internal unsafe struct SchedulerTrack
     ///     </item>
     /// </list>
     /// </remarks>
-    public readonly Span<T> GetValues<T>() where T : unmanaged => new((void*)_values, KeyCount);
+    public Span<T> GetValues<T>() where T : unmanaged => new((void*)_values, KeyCount);
 }
 
 [StructLayout(LayoutKind.Sequential, Size = 0x4)]
