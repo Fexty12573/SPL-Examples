@@ -443,6 +443,16 @@ public static unsafe partial class InternalCalls
         CollectionsMarshal.SetCount(nodes, count);
         GetOrderedNodeIds(CollectionsMarshal.AsSpan(nodes), count);
     }
+
+    [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
+    public static partial nint GetAllocator(nint dti);
+
+    internal static MtAllocator GetAllocator(MtDti? dti)
+    {
+        if (dti is null) return null!;
+        var allocator = GetAllocator(dti.Instance);
+        return allocator == 0 ? null! : new MtAllocator(allocator);
+    }
 }
 
 

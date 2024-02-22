@@ -37,6 +37,11 @@ public class XFsmEditor
     private float _l = 500f;
     private float _sF = 0.001f;
 
+    #region Allocators
+    private MtAllocator _nodeAllocator = null!;
+    private MtAllocator _clusterAllocator = null!;
+    #endregion
+
     public void SetFsm(AIFSM fsm)
     {
         if (_ctx == 0)
@@ -65,6 +70,12 @@ public class XFsmEditor
             {
                 Log.Error("Failed to load BlueprintBackground.png");
             }
+
+            _nodeAllocator = NodeEditor.GetAllocator(MtDti.Find("cAIFSMNode"));
+            Ensure.NotNull(_nodeAllocator);
+
+            _clusterAllocator = NodeEditor.GetAllocator(MtDti.Find("cAIFSMCluster"));
+            Ensure.NotNull(_clusterAllocator);
         }
 
         if (fsm.RootCluster is null)

@@ -8,7 +8,12 @@ public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> whe
 {
     private readonly nint* _pointer = (nint*)pointer;
     public int Count => count;
-    public T this[int index] => new() { Instance = _pointer[index] };
+    public nint Pointer => (nint)_pointer;
+    public T this[int index]
+    {
+        get => new() { Instance = _pointer[index] };
+        set => _pointer[index] = value.Instance;
+    }
 
     public IEnumerator<T> GetEnumerator() =>new Enumerator(_pointer, count);
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
