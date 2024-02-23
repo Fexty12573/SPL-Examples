@@ -23,6 +23,9 @@ public class XFsmEditor
     private readonly List<XFsmNode> _nodes = [];
     private readonly List<XFsmLink> _links = [];
 
+    private readonly List<IXFsmNodeFilter> _nodeFilters = [];
+    private readonly List<IXFsmLinkFilter> _linkFilters = [];
+
     private TextureHandle _blueprintHeaderBg;
     private uint _headerBgWidth;
     private uint _headerBgHeight;
@@ -38,8 +41,16 @@ public class XFsmEditor
     private float _sF = 0.001f;
 
     #region Allocators
+
     private MtAllocator _nodeAllocator = null!;
     private MtAllocator _clusterAllocator = null!;
+
+    #endregion
+
+    #region DTIs
+
+    private readonly List<MtDti> _parameterDtis = [];
+
     #endregion
 
     public void SetFsm(AIFSM fsm)
@@ -76,6 +87,16 @@ public class XFsmEditor
 
             _clusterAllocator = NodeEditor.GetAllocator(MtDti.Find("cAIFSMCluster"));
             Ensure.NotNull(_clusterAllocator);
+
+            var paramDti = MtDti.Find("cAICopiableParameter");
+            Ensure.NotNull(paramDti);
+
+            foreach (var dti in paramDti.AllChildren)
+            {
+                _parameterDtis.Add(dti);
+            }
+
+            _parameterDtis.Sort((a, b) => StringComparer.Ordinal.Compare(a.Name, b.Name));
         }
 
         if (fsm.RootCluster is null)
@@ -95,15 +116,20 @@ public class XFsmEditor
         // Create links
         foreach (var node in _nodes)
         {
-            foreach (ref var link in node.BackingNode.Links)
+            foreach (var link in node.BackingNode.Links)
             {
                 var target = GetNodeById(link.DestinationNodeId);
                 if (target is null)
                     continue;
 
-                _links.Add(new XFsmLink(node.OutputPin, target.InputPin, ref link));
+                _links.Add(new XFsmLink(node.OutputPin, target.InputPin, link));
             }
         }
+
+        ImGuiExtensions.NotificationSuccess($"""
+            Successfully loaded FSM into Editor
+            Nodes: {_nodes.Count}, Links: {_links.Count}
+            """);
 
         Log.Info($"Successfully loaded FSM into Editor");
         Log.Info($"Nodes: {_nodes.Count}, Links: {_links.Count}");
@@ -190,6 +216,16 @@ public class XFsmEditor
             }
         }
 
+        ImGui.BeginChild("##sidebar", new Vector2(), ImGuiChildFlags.Border | ImGuiChildFlags.ResizeX);
+        {
+            ShowLeftSidePanel();
+        }
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+
+
+
         NodeEditor.Begin("XFSM Editor");
 
         var style = ImGui.GetStyle();
@@ -208,26 +244,36 @@ public class XFsmEditor
             }
             builder.EndHeader();
 
+            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(0f, 0.5f));
             builder.Input(node.InputPin.Id);
             {
                 ImGui.TextUnformatted(node.InputPin.Name);
                 ImGui.Spring(0);
             }
             builder.EndInput();
+            NodeEditor.PopStyleVar();
 
             builder.Middle();
             {
                 ImGui.Spring(1, 0);
-                ImGui.TextUnformatted("Middle");
+                
+                foreach (ref var process in node.BackingNode.Processes)
+                {
+                    
+                    ImGui.Dummy(new Vector2(0, 28));
+                }
+
                 ImGui.Spring(1, 0);
             }
 
+            NodeEditor.PushStyleVarVec2(StyleVar.PivotAlignment, new Vector2(1f, 0.5f));
             builder.Output(node.OutputPin.Id);
             {
                 ImGui.TextUnformatted(node.OutputPin.Name);
                 ImGui.Spring(0);
             }
             builder.EndOutput();
+            NodeEditor.PopStyleVar();
             
             builder.End();
         }
@@ -237,42 +283,78 @@ public class XFsmEditor
             NodeEditor.Link(link.Id, link.Source.Id, link.Target.Id);
         }
 
-        //if (NodeEditor.BeginCreate(new Vector4(1, 1, 1, 1), 2.0f))
-        //{
-        //    if (NodeEditor.QueryNewLink(out var startPinId, out var endPinId))
-        //    {
-        //        var startPin = GetPinById(startPinId);
-        //        var endPin = GetPinById(endPinId);
+        if (NodeEditor.BeginCreate(new Vector4(1, 1, 1, 1), 2.0f))
+        {
+            if (NodeEditor.QueryNewLink(out var startPinId, out var endPinId))
+            {
+                var startPin = GetPinById(startPinId);
+                var endPin = GetPinById(endPinId);
 
-        //        if (startPin is XFsmInputPin && endPin is XFsmOutputPin)
-        //        {
-        //            (startPin, endPin) = (endPin, startPin);
-        //        }
+                if (startPin is XFsmInputPin && endPin is XFsmOutputPin)
+                {
+                    (startPin, endPin) = (endPin, startPin);
+                }
 
-        //        if (startPin is not null && endPin is not null)
-        //        {
-        //            if (startPin == endPin)
-        //            {
-        //                NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
-        //            }
-        //            else if (startPin.GetType() == endPin.GetType())
-        //            {
-        //                ShowLabel($"{FA6.Cross} Incompatible Pin Kind", new MtColor(45, 32, 32, 180));
-        //                NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
-        //            }
-        //            else
-        //            {
-        //                ShowLabel($"{FA6.Plus} Create Link", new MtColor(32, 45, 32, 180));
-        //                if (NodeEditor.AcceptNewItemEx(new Vector4(0.5f, 1, 0.5f, 1), 4.0f))
-        //                {
-        //                    _links.Add(new XFsmLink((XFsmOutputPin)startPin, (XFsmInputPin)endPin, ref Unsafe.NullRef<AIFSMLink>()));
-        //                }
-        //            }
-        //        }
-        //    }
+                if (startPin is not null && endPin is not null)
+                {
+                    if (startPin == endPin)
+                    {
+                        NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
+                    }
+                    else if (startPin.GetType() == endPin.GetType())
+                    {
+                        ShowLabel($"{FA6.Cross} Incompatible Pin Kind", new MtColor(45, 32, 32, 180));
+                        NodeEditor.RejectNewItemEx(new Vector4(1, 0, 0, 1), 2.0f);
+                    }
+                    else
+                    {
+                        ShowLabel($"{FA6.Plus} Create Link", new MtColor(32, 45, 32, 180));
+                        if (NodeEditor.AcceptNewItemEx(new Vector4(0.5f, 1, 0.5f, 1), 4.0f))
+                        {
+                            var source = (XFsmOutputPin)startPin;
+                            var target = (XFsmInputPin)endPin;
 
-        //    NodeEditor.EndCreate();
-        //}
+                            _links.Add(new XFsmLink(
+                                source, target,
+                                source.Parent.BackingNode.AddLink()
+                            ));
+                        }
+                    }
+                }
+            }
+
+            NodeEditor.EndCreate();
+        }
+
+        if (NodeEditor.BeginDelete())
+        {
+            if (NodeEditor.QueryDeletedNode(out var nodeId))
+            {
+                if (NodeEditor.AcceptDeletedItem())
+                {
+                    var node = GetNodeById(nodeId);
+                    if (node is not null)
+                    {
+                        _nodes.Remove(node);
+                    }
+                }
+            }
+
+            if (NodeEditor.QueryDeletedLink(out var linkId))
+            {
+                if (NodeEditor.AcceptDeletedItem())
+                {
+                    var link = GetLinkById(linkId);
+                    if (link is not null)
+                    {
+                        link.Source.Parent.BackingNode.RemoveLink(link.BackingLink);
+                        _links.Remove(link);
+                    }
+                }
+            }
+
+            NodeEditor.EndDelete();
+        }
 
         NodeEditor.End();
         NodeEditor.SetCurrentEditor(0);
@@ -297,13 +379,15 @@ public class XFsmEditor
         }
     }
 
-    private void ShowSidePanel()
+    private void ShowLeftSidePanel()
     {
-        ImGui.Begin("Properties");
+        ImGui.SeparatorText("Nodes");
 
 
 
-        ImGui.End();
+        ImGui.SeparatorText("Filters");
+
+        // Configure filters here
     }
 
     private void ShowStyleEditor()
@@ -381,7 +465,7 @@ public class XFsmEditor
         NodeEditor.EndNode();
     }
 
-    private XFsmNode? GetNodeById(int id)
+    private XFsmNode? GetNodeById(nint id)
     {
         return _nodes.FirstOrDefault(x => x.Id == id);
     }
@@ -395,6 +479,17 @@ public class XFsmEditor
 
             if (node.OutputPin.Id == id)
                 return node.OutputPin;
+        }
+
+        return null;
+    }
+
+    private XFsmLink? GetLinkById(nint id)
+    {
+        foreach (var link in _links)
+        {
+            if (link.Id == id)
+                return link;
         }
 
         return null;
@@ -453,9 +548,10 @@ public class XFsmOutputPin(XFsmNode parent) : XFsmPin("Output", XFsmEditor.MakeO
     public XFsmNode Parent { get; } = parent;
 }
 
-public class XFsmLink(XFsmOutputPin source, XFsmInputPin target, ref AIFSMLink link)
+public class XFsmLink(XFsmOutputPin source, XFsmInputPin target, AIFSMLink link)
 {
     public nint Id { get; } = XFsmEditor.MakeLinkId(source.Parent, target.Parent);
+    public string Name { get; set; } = link.Name;
     public XFsmOutputPin Source { get; } = source;
     public XFsmInputPin Target { get; } = target;
     public AIFSMLink BackingLink { get; } = link;
