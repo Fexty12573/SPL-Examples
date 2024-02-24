@@ -15,6 +15,7 @@
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui-node-editor/imgui_node_editor_internal.h>
 
+
 namespace SPLNative = SharpPluginLoader::Native;
 
 namespace ax::NodeEditor {
@@ -30,7 +31,7 @@ void render_doc_trigger_capture() {
 }
 
 SPL_INTERNAL_CALL int get_internal_call_count() {
-    return 120;
+    return 119;
 }
 
 SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
