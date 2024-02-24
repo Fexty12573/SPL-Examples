@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="SharpPluginLoader.ImGui" Version="1.90.2" />
     <PackageReference Include="SharpPluginLoader.InternalCallGenerator" Version="1.1.1" />
   </ItemGroup>

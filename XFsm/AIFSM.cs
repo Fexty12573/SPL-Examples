@@ -2,6 +2,7 @@
 using SharpPluginLoader.Core;
 using SharpPluginLoader.Core.Memory;
 using SharpPluginLoader.Core.Resources;
+using XFsm.ImGuiNodeEditor;
 
 namespace XFsm;
 
@@ -19,24 +20,111 @@ public class AIFSM : Resource
 
 public class AIFSMCluster : AIFSMObject
 {
-    public AIFSMCluster(nint instance) : base(instance) { }
-    public AIFSMCluster() { }
+    public AIFSMCluster(nint instance) : base(instance) 
+    {
+        _nodeCapacity = NodeCount;
+    }
+
+    public AIFSMCluster() { _nodeCapacity = 0; }
+
+    private int _nodeCapacity;
 
     public ref uint OwnerObjectUniqueId => ref GetRef<uint>(0xC);
     public ref uint InitialStateId => ref GetRef<uint>(0x10);
     public ref int NodeCount => ref GetRef<int>(0x14);
-    public ObjectArray<AIFSMNode> Nodes => new(Get<nint>(0x18), NodeCount);
+    public ObjectArray<AIFSMNode> Nodes
+    {
+        get => new(Get<nint>(0x18), NodeCount);
+        set
+        {
+            Set(0x18, value.Address);
+            NodeCount = value.Count;
+        }
+    }
+
+    public unsafe void AddNode(AIFSMNode node, MtAllocator? allocator = null)
+    {
+        if (NodeCount == _nodeCapacity)
+        {
+            allocator ??= GetAllocator();
+
+            _nodeCapacity += 32;
+            var newNodes = new ObjectArray<AIFSMNode>(
+                allocator.Alloc(8 * _nodeCapacity), 
+                NodeCount + 1
+            );
+            
+            NativeMemory.Copy(newNodes.Pointer, Nodes.Pointer, (nuint)NodeCount * 8);
+
+            allocator.Free(Nodes.Address);
+            Nodes = newNodes;
+        }
+
+        Nodes[NodeCount] = node;
+        NodeCount++;
+    }
+
+    public unsafe AIFSMNode AddNode()
+    {
+        var node = (MtDti.Find("cAIFSMNode")?.CreateInstance<AIFSMNode>()) 
+            ?? throw new NullReferenceException("Failed to create AIFSMNode instance");
+        AddNode(node);
+        return node;
+    }
+
+    public unsafe void RemoveNode(int index)
+    {
+        if (index < 0 || index >= NodeCount)
+        {
+            throw new IndexOutOfRangeException("Node index out of range");
+        }
+
+        Nodes[index].Destroy(true);
+        for (var i = index; i < NodeCount - 1; i++)
+        {
+            Nodes[i] = Nodes[i + 1];
+        }
+
+        NodeCount--;
+    }
+
+    public unsafe void RemoveNode(AIFSMNode node)
+    {
+        for (var i = 0; i < NodeCount; i++)
+        {
+            if (Nodes[i].Instance == node.Instance)
+            {
+                RemoveNode(i);
+                return;
+            }
+        }
+    }
+
+    public static MtAllocator GetAllocator()
+    {
+        return InternalCalls.GetAllocator(MtDti.Find("cAIFSMCluster"));
+    }
 }
 
 public class AIFSMNode : AIFSMObject
 {
-    public AIFSMNode(nint instance) : base(instance) { }
+    public AIFSMNode(nint instance) : base(instance) { _linkCapacity = LinkCount; }
     public AIFSMNode() { }
+
+    private int _linkCapacity = 0;
 
     public ref uint UniqueId => ref GetRef<uint>(0xC);
     public ref uint OwnerId => ref GetRef<uint>(0x10);
     public ref int LinkCount => ref GetRef<int>(0x14);
-    public PointerArray<AIFSMLink> Links => new(Get<nint>(0x18), LinkCount);
+    public unsafe ObjectArray<AIFSMLink> Links
+    {
+        get => new(Get<nint>(0x18), LinkCount);
+        set
+        {
+            Set(0x18, value.Address);
+            LinkCount = value.Count;
+        }
+    }
     public AIFSMCluster? SubCluster => GetObject<AIFSMCluster>(0x20);
     public ref int ProcessCount => ref GetRef<int>(0x28);
     public PointerArray<AIFSMNodeProcess> Processes => new(Get<nint>(0x30), ProcessCount);
@@ -47,28 +135,92 @@ public class AIFSMNode : AIFSMObject
     public ref bool ExistConditionTransitionFromAll => ref GetRef<bool>(0x48);
     public ref uint ConditionTransitionFromAllId => ref GetRef<uint>(0x4C);
     public unsafe string Name => GetPtr<MtString>(0x50)->GetString();
+
+    public unsafe void AddLink(AIFSMLink link, MtAllocator? allocator = null)
+    {
+        if (LinkCount == _linkCapacity)
+        {
+            allocator ??= GetAllocator();
+
+            _linkCapacity += 32;
+            var newLinks = new ObjectArray<AIFSMLink>(
+                allocator.Alloc(8 * _linkCapacity),
+                LinkCount + 1
+            );
+
+            NativeMemory.Copy(newLinks.Pointer, Links.Pointer, (nuint)LinkCount * 8);
+
+            allocator.Free(Links.Address);
+            Links = newLinks;
+        }
+
+        Links[LinkCount] = link;
+        LinkCount++;
+    }
+
+    public unsafe AIFSMLink AddLink()
+    {
+        var link = MtDti.Find("cAIFSMLink")?.CreateInstance<AIFSMLink>() 
+            ?? throw new NullReferenceException("Failed to create AIFSMLink instance");
+        AddLink(link);
+        return link;
+    }
+
+    public unsafe void RemoveLink(int index)
+    {
+        if (index < 0 || index >= LinkCount)
+        {
+            throw new IndexOutOfRangeException("Link index out of range");
+        }
+
+        Links[index].Destroy(true);
+        for (var i = index; i < LinkCount - 1; i++)
+        {
+            Links.Pointer[i] = Links.Pointer[i + 1];
+        }
+
+        LinkCount--;
+    }
+
+    public unsafe void RemoveLink(AIFSMLink link)
+    {
+        for (var i = 0; i < LinkCount; i++)
+        {
+            if (Links.Pointer[i] == link.Instance)
+            {
+                RemoveLink(i);
+                return;
+            }
+        }
+    }
+
+    public static MtAllocator GetAllocator()
+    {
+        return InternalCalls.GetAllocator(MtDti.Find("cAIFSMNode"));
+    }
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 0x18)]
-public unsafe struct AIFSMLink
+public unsafe class AIFSMLink : MtObject
 {
-    [FieldOffset(0x00)] public nint VTable;
-    [FieldOffset(0x08)] public int DestinationNodeId;
-    [FieldOffset(0x0C)] public bool HasCondition;
-    [FieldOffset(0x10)] public int ConditionId;
-    [FieldOffset(0x18)] public MtString* NamePtr;
+    public AIFSMLink(nint instance) : base(instance) { }
+    public AIFSMLink() { }
+
+
+    public ref int DestinationNodeId => ref GetRef<int>(0x8);
+    public ref bool HasCondition => ref GetRef<bool>(0xC);
+    public ref int ConditionId => ref GetRef<int>(0x10);
+    public MtString* NamePtr => GetPtr<MtString>(0x18);
+    public nint NamePPtr => (nint)NamePtr;
 
     public string Name
     {
-        readonly get => NamePtr->GetString();
-        set
-        {
-            var assign = new NativeAction<nint, string>(0x14031b0b0);
-            fixed (MtString** namePtr = &NamePtr)
-            {
-                assign.Invoke((nint)namePtr, value);
-            }
-        }
+        get => NamePtr->GetString();
+        set => InternalCalls.MtStringAssign(NamePPtr, value);
+    }
+
+    public static MtAllocator GetAllocator()
+    {
+        return InternalCalls.GetAllocator(MtDti.Find("cAIFSMLink"));
     }
 }
 
@@ -88,6 +240,11 @@ public unsafe struct AIFSMNodeProcess
 
     public string ContainerName => ContainerNamePtr->GetString();
     public string CategoryName => CategoryNamePtr->GetString();
+
+    public static MtAllocator GetAllocator()
+    {
+        return InternalCalls.GetAllocator(MtDti.Find("cAIFSMNodeProcess"));
+    }
 }
 
 public class AIFSMObject : MtObject

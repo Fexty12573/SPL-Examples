@@ -443,6 +443,19 @@ public static unsafe partial class InternalCalls
         CollectionsMarshal.SetCount(nodes, count);
         GetOrderedNodeIds(CollectionsMarshal.AsSpan(nodes), count);
     }
+
+    [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
+    public static partial nint GetAllocator(nint dti);
+
+    internal static MtAllocator GetAllocator(MtDti? dti)
+    {
+        if (dti is null) return null!;
+        var allocator = GetAllocator(dti.Instance);
+        return allocator == 0 ? null! : new MtAllocator(allocator);
+    }
+
+    [InternalCall(Pattern = "48 83 ec 20 48 8b d9 48 8b fa 48 8b 09 48 8d 41 08", Offset = -6)]
+    public static partial void MtStringAssign(nint str, string value);
 }
 
 
