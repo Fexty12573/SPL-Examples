@@ -159,7 +159,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
                 _headerMin = ImGui.GetItemRectMin();
                 _headerMax = ImGui.GetItemRectMax();
 
-                ImGui.Spring(0, ImGui.GetStyle().ItemSpacing.Y);
+                ImGui.Spring(0, ImGui.GetStyle().ItemSpacing.Y * 2f);
                 break;
 
             case Stage.Content:
@@ -245,7 +245,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
             case Stage.End:
                 if (oldStage == Stage.Input)
                     ImGui.Spring(1, 0);
-                else
+                else if (oldStage != Stage.Begin)
                     ImGui.EndHorizontal();
 
                 _contentMin = ImGui.GetItemRectMin();

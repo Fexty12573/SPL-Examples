@@ -67,11 +67,6 @@ public static class ColExtensions
         ]);
     }
 
-    public static ref Vector3 GetExtents(this ref CollGeom clgm)
-    {
-        return ref Unsafe.As<MtVector3, Vector3>(ref clgm.Extent);
-    }
-
     public static nint GetCollIndex(this CollisionComponent.Node node)
     {
         return node.Get<nint>(0x98);

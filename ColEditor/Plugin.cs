@@ -80,15 +80,7 @@ public partial class Plugin : IPlugin
 
     #endregion
 
-    public PluginData Initialize()
-    {
-        return new PluginData
-        {
-            OnRender = true,
-            OnImGuiFreeRender = true,
-            ImGuiWrappedInTreeNode = false
-        };
-    }
+    public PluginData Initialize() => new() { ImGuiWrappedInTreeNode = false };
 
     public void OnLoad()
     {
@@ -133,8 +125,37 @@ public partial class Plugin : IPlugin
     {
         if (_selectedModel is not null)
         {
+            //if (_selectedModel.Is("uCharacterModel"))
+            //{
+            //    var stageAdjustCollision = _selectedModel.Instance + 0xA40;
+            //    ref var bb = ref MemoryUtil.GetRef<MtAabb>(stageAdjustCollision + 0x20);
+
+            //    // Draw the bounding box as a series of lines
+            //    var min = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x80);
+            //    var max = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x70);
+
+            //    Span<Vector3> corners =
+            //    [
+            //        new Vector3(min.X, min.Y, min.Z),
+            //        new Vector3(max.X, min.Y, min.Z),
+            //        new Vector3(max.X, min.Y, max.Z),
+            //        new Vector3(min.X, min.Y, max.Z),
+            //        new Vector3(min.X, max.Y, min.Z),
+            //        new Vector3(max.X, max.Y, min.Z),
+            //        new Vector3(max.X, max.Y, max.Z),
+            //        new Vector3(min.X, max.Y, max.Z)
+            //    ];
+
+            //    for (var i = 0; i < 4; i++)
+            //    {
+            //        Primitives.RenderLine(corners[i], corners[(i + 1) % 4], Color.White);
+            //        Primitives.RenderLine(corners[i + 4], corners[(i + 1) % 4 + 4], Color.White);
+            //        Primitives.RenderLine(corners[i], corners[i + 4], Color.White);
+            //    }
+            //}
+
             var joints = _selectedModel.GetJoints();
-            var defaultColor = (MtVector4)_config.DefaultBoneColor;
+            var defaultColor = _config.DefaultBoneColor.ToVector4();
 
             foreach (ref var joint in joints)
             {
@@ -154,7 +175,7 @@ public partial class Plugin : IPlugin
                 {
                     if (preset.Bones.Contains(joint.Id))
                     {
-                        color = (MtVector4)preset.Color;
+                        color = preset.Color.ToVector4();
                         break;
                     }
                 }
@@ -172,23 +193,23 @@ public partial class Plugin : IPlugin
             {
                 if (geometry.Geom is null) continue;
 
-                MtVector4 color;
+                Vector4 color;
                 if (node.IsActive)
                 {
                     color = geometry.Geom.Type switch
                     {
-                        GeometryType.Sphere => new MtVector4(1, 0, 0, 0.25f),
-                        GeometryType.Capsule => new MtVector4(0, 1, 0, 0.25f),
-                        GeometryType.Obb => new MtVector4(0, 0, 1, 0.25f),
-                        _ => new MtVector4(1, 1, 1, 0.25f)
+                        GeometryType.Sphere => new Vector4(1, 0, 0, 0.25f),
+                        GeometryType.Capsule => new Vector4(0, 1, 0, 0.25f),
+                        GeometryType.Obb => new Vector4(0, 0, 1, 0.25f),
+                        _ => new Vector4(1, 1, 1, 0.25f)
                     };
 
                     if (node.Get<nint>(0x90) == 0) // AttackParam
-                        color = new MtVector4(0f, 0.165f, 0.431f, 0.25f);
+                        color = new Vector4(0f, 0.165f, 0.431f, 0.25f);
                 }
                 else
                 {
-                    color = new MtVector4(0.5f, 0.5f, 0.5f, 0.25f);
+                    color = new Vector4(0.5f, 0.5f, 0.5f, 0.25f);
                 }
 
                 switch (geometry.Geom.Type)
@@ -221,6 +242,42 @@ public partial class Plugin : IPlugin
                 {
                     var pos = new Vector2(screenPos.X + 10, screenPos.Y);
                     bgDrawList.AddText(font, _textSize, pos, MtColor.FromVector4(_textColor), joint.Id.ToString());
+                }
+            }
+
+            if (_selectedModel.Is("uCharacterModel"))
+            {
+                var stageAdjustCollision = _selectedModel.Instance + 0xA40;
+                ref var bb = ref MemoryUtil.GetRef<MtAabb>(stageAdjustCollision + 0x20);
+
+                // Draw the bounding box as a series of lines
+                var min = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x80);
+                var max = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x70);
+
+                Span<Vector3> corners =
+                [
+                    new Vector3(min.X, min.Y, min.Z),
+                    new Vector3(max.X, min.Y, min.Z),
+                    new Vector3(max.X, min.Y, max.Z),
+                    new Vector3(min.X, min.Y, max.Z),
+                    new Vector3(min.X, max.Y, min.Z),
+                    new Vector3(max.X, max.Y, min.Z),
+                    new Vector3(max.X, max.Y, max.Z),
+                    new Vector3(min.X, max.Y, max.Z)
+                ];
+
+                Span<Vector2> screenCorners = stackalloc Vector2[8];
+                for (var i = 0; i < corners.Length; ++i)
+                {
+                    if (_mainViewport.WorldToScreen(corners[i], out var screenPos))
+                        screenCorners[i] = screenPos;
+                }
+
+                for (var i = 0; i < 4; i++)
+                {
+                    bgDrawList.AddLine(screenCorners[i], screenCorners[(i + 1) % 4], new MtColor(255, 0, 0, 255), 2);
+                    bgDrawList.AddLine(screenCorners[i + 4], screenCorners[(i + 1) % 4 + 4], new MtColor(255, 0, 0, 255), 2);
+                    bgDrawList.AddLine(screenCorners[i], screenCorners[i + 4], new MtColor(255, 0, 0, 255), 2);
                 }
             }
         }
@@ -603,11 +660,11 @@ public partial class Plugin : IPlugin
         ImGui.Separator();
 
         ImGui.DragFloat("Radius", ref clgm.Radius);
-        ImGui.DragFloat3("Extents", ref AsVec3(ref clgm.Extent));
-        ImGui.DragFloat4("Offset 1", ref AsVec4(ref clgm.Offset0));
-        ImGui.DragFloat4("Offset 2", ref AsVec4(ref clgm.Offset1));
-        ImGui.DragFloat2("Angle 1", ref AsVec2(ref clgm.Angle0));
-        ImGui.DragFloat2("Angle 2", ref AsVec2(ref clgm.Angle1));
+        ImGui.DragFloat3("Extents", ref clgm.Extent);
+        ImGui.DragFloat4("Offset 1", ref clgm.Offset0);
+        ImGui.DragFloat4("Offset 2", ref clgm.Offset1);
+        ImGui.DragFloat2("Angle 1", ref clgm.Angle0);
+        ImGui.DragFloat2("Angle 2", ref clgm.Angle1);
 
         ImGui.NewLine();
 
@@ -678,10 +735,6 @@ public partial class Plugin : IPlugin
         clgm.ScaleOption = (byte)(flags & 0xFF);
 
         return;
-
-        static ref Vector2 AsVec2(ref MtVector2 vec) => ref Unsafe.As<MtVector2, Vector2>(ref vec);
-        static ref Vector3 AsVec3(ref MtVector3 vec) => ref Unsafe.As<MtVector3, Vector3>(ref vec);
-        static ref Vector4 AsVec4(ref MtVector4 vec) => ref Unsafe.As<MtVector4, Vector4>(ref vec);
 
         static void ScaleTooltip(char axis)
         {
