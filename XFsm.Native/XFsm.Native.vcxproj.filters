@@ -19,6 +19,9 @@
     <Filter Include="Source Files\ImGuiNodeEditor">
       <UniqueIdentifier>{9b923b19-e93b-443e-8c76-6003a16a8258}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\ImGuiNodeEditor">
+      <UniqueIdentifier>{9a1cbf34-c440-4c93-9a5e-f79eea0cc261}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -51,5 +54,19 @@
     <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor_api.cpp">
       <Filter>Source Files\ImGuiNodeEditor</Filter>
     </ClCompile>
+    <ClCompile Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.cpp">
+      <Filter>Source Files\ImGuiNodeEditor</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.h">
+      <Filter>Header Files\ImGuiNodeEditor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.h">
+      <Filter>Header Files\ImGuiNodeEditor</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,5 +1,4 @@
-﻿using FuzzySharp;
-
+﻿
 namespace XFsm;
 
 public interface IXFsmNodeFilter
@@ -42,7 +41,7 @@ public class NodeNameFuzzyFilter(string nodeName, int threshold = 65) : IXFsmNod
 {
     public bool IsVisible(XFsmNode node)
     {
-        return Fuzz.PartialRatio(node.Name, nodeName) >= threshold;
+        return node.Name.Contains(nodeName, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -78,7 +77,7 @@ public class LinkNameFuzzyFilter(string linkName, int threshold = 65) : IXFsmLin
 {
     public bool IsVisible(XFsmLink link)
     {
-        return Fuzz.PartialRatio(link.Name, linkName) >= threshold;
+        return link.Name.Contains(linkName, StringComparison.OrdinalIgnoreCase);
     }
 }
 

@@ -14,7 +14,7 @@
 #include <imgui_internal.h>
 #include <imgui-node-editor/imgui_node_editor.h>
 #include <imgui-node-editor/imgui_node_editor_internal.h>
-
+#include <imgui-node-editor/examples/blueprints-example/utilities/widgets.h>
 
 namespace SPLNative = SharpPluginLoader::Native;
 
@@ -31,7 +31,7 @@ void render_doc_trigger_capture() {
 }
 
 SPL_INTERNAL_CALL int get_internal_call_count() {
-    return 119;
+    return 120;
 }
 
 SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
@@ -159,6 +159,7 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "CanvasToScreen", ax::NodeEditor::CanvasToScreen };
     *icalls++ = { "GetNodeCount", ax::NodeEditor::GetNodeCount };
     *icalls++ = { "GetOrderedNodeIds", ax::NodeEditor::GetOrderedNodeIds };
+    *icalls++ = { "Icon", ax::Widgets::Icon };
 }
 
 

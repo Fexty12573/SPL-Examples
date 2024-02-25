@@ -164,6 +164,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\dependencies\imgui-node-editor\crude_json.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.cpp" />
+    <ClCompile Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.cpp" />
     <ClCompile Include="..\dependencies\imgui-node-editor\imgui_canvas.cpp" />
     <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor.cpp" />
     <ClCompile Include="..\dependencies\imgui-node-editor\imgui_node_editor_api.cpp" />
@@ -173,6 +175,10 @@
     <ClCompile Include="..\dependencies\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\dependencies\imgui\imgui_widgets.cpp" />
     <ClCompile Include="dllmain.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.h" />
+    <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

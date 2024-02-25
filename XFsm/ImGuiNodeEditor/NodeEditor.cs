@@ -444,6 +444,17 @@ public static unsafe partial class InternalCalls
         GetOrderedNodeIds(CollectionsMarshal.AsSpan(nodes), count);
     }
 
+    [InternalCall]
+    public static partial void Icon(in Vector2 size, IconType type, bool filled, in Vector4 color, in Vector4 innerColor);
+    public static void Icon(in Vector2 size, IconType type, bool filled, in Vector4 color)
+    {
+        Icon(size, type, filled, color, new Vector4(0, 0, 0, 0));
+    }
+    public static void Icon(in Vector2 size, IconType type, bool filled)
+    {
+        Icon(size, type, filled, new Vector4(1, 1, 1, 1));
+    }
+
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);
 
@@ -547,6 +558,16 @@ public enum StyleVar
     SelectedNodeBorderOffset,
 
     Count
+}
+
+public enum IconType
+{
+    Flow,
+    Circle,
+    Square,
+    Grid,
+    RoundSquare,
+    Diamond,
 }
 
 public unsafe class Config

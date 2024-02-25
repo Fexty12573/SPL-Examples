@@ -16,9 +16,8 @@ public partial class Plugin
     private Hook<D3DPERF_GetStatus>? _hook;
     private delegate uint D3DPERF_GetStatus();
 
-    public void OnWinMain()
+    public void OnWinMain_()
     {
-        return;
         if (!Renderer.IsDirectX12)
         {
             var d3d9 = LoadLibrary("d3d9.dll");
@@ -56,13 +55,4 @@ public partial class Plugin
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetProcAddress", StringMarshalling = StringMarshalling.Utf8)]
     private static partial nint GetProcAddress(nint module, string name);
-
-    public void OnUpdate(float deltaTime)
-    {
-        return;
-        if (KeyBindings.IsPressed("DoCapture"))
-        {
-            ImGuiNodeEditor.InternalCalls.RenderDocTriggerCapture();
-        }
-    }
 }

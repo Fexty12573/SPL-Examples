@@ -96,6 +96,9 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
             SetStage(Stage.Content);
 
         var applyPadding = _currentStage == Stage.Input;
+
+        SetStage(Stage.Input);
+
         if (applyPadding)
             ImGui.Spring(0);
 
@@ -125,6 +128,9 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
             SetStage(Stage.Content);
 
         var applyPadding = _currentStage == Stage.Output;
+
+        SetStage(Stage.Output);
+
         if (applyPadding)
             ImGui.Spring(0);
 

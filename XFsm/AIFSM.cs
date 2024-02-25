@@ -11,7 +11,7 @@ public class AIFSM : Resource
     public AIFSM(nint instance) : base(instance) { }
     public AIFSM() { }
 
-    public string OwnerObjectName => GetRef<MtString>(0xA8).GetString();
+    public unsafe string OwnerObjectName => GetPtr<MtString>(0xA8)->GetString();
 
     public AIFSMCluster? RootCluster => GetObject<AIFSMCluster>(0xB0);
 
@@ -55,20 +55,26 @@ public class AIFSMCluster : AIFSMObject
             );
             
             NativeMemory.Copy(newNodes.Pointer, Nodes.Pointer, (nuint)NodeCount * 8);
+            newNodes[NodeCount] = node;
 
             allocator.Free(Nodes.Address);
             Nodes = newNodes;
         }
-
-        Nodes[NodeCount] = node;
-        NodeCount++;
+        else
+        {
+            Nodes[NodeCount] = node;
+            NodeCount++;
+        }
     }
 
-    public unsafe AIFSMNode AddNode()
+    public AIFSMNode AddNode(string name)
     {
         var node = (MtDti.Find("cAIFSMNode")?.CreateInstance<AIFSMNode>()) 
             ?? throw new NullReferenceException("Failed to create AIFSMNode instance");
+
         AddNode(node);
+        node.Name = name;
+
         return node;
     }
 
@@ -108,10 +114,15 @@ public class AIFSMCluster : AIFSMObject
 
 public class AIFSMNode : AIFSMObject
 {
-    public AIFSMNode(nint instance) : base(instance) { _linkCapacity = LinkCount; }
+    public AIFSMNode(nint instance) : base(instance)
+    {
+        _linkCapacity = LinkCount;
+        _processCapacity = ProcessCount;
+    }
     public AIFSMNode() { }
 
     private int _linkCapacity = 0;
+    private int _processCapacity = 0;
 
     public ref uint UniqueId => ref GetRef<uint>(0xC);
     public ref uint OwnerId => ref GetRef<uint>(0x10);
@@ -127,14 +138,27 @@ public class AIFSMNode : AIFSMObject
     }
     public AIFSMCluster? SubCluster => GetObject<AIFSMCluster>(0x20);
     public ref int ProcessCount => ref GetRef<int>(0x28);
-    public PointerArray<AIFSMNodeProcess> Processes => new(Get<nint>(0x30), ProcessCount);
+    public ObjectArray<AIFSMNodeProcess> Processes
+    {
+        get => new(Get<nint>(0x30), ProcessCount);
+        set
+        {
+            Set(0x30, value.Address);
+            ProcessCount = value.Count;
+        }
+    }
     public ref uint Setting => ref GetRef<uint>(0x38);
     public ref uint UserAttribute => ref GetRef<uint>(0x3C);
     public ref uint UIPos => ref GetRef<uint>(0x40);
     public ref byte ColorType => ref GetRef<byte>(0x44);
     public ref bool ExistConditionTransitionFromAll => ref GetRef<bool>(0x48);
     public ref uint ConditionTransitionFromAllId => ref GetRef<uint>(0x4C);
-    public unsafe string Name => GetPtr<MtString>(0x50)->GetString();
+
+    public unsafe string Name
+    {
+        get => GetPtr<MtString>(0x50)->GetString();
+        set => InternalCalls.MtStringAssign(Instance + 0x50, value);
+    }
 
     public unsafe void AddLink(AIFSMLink link, MtAllocator? allocator = null)
     {
@@ -149,20 +173,26 @@ public class AIFSMNode : AIFSMObject
             );
 
             NativeMemory.Copy(newLinks.Pointer, Links.Pointer, (nuint)LinkCount * 8);
+            newLinks[LinkCount] = link;
 
             allocator.Free(Links.Address);
             Links = newLinks;
         }
-
-        Links[LinkCount] = link;
-        LinkCount++;
+        else
+        {
+            Links[LinkCount] = link;
+            LinkCount++;
+        }
     }
 
-    public unsafe AIFSMLink AddLink()
+    public AIFSMLink AddLink(string name)
     {
         var link = MtDti.Find("cAIFSMLink")?.CreateInstance<AIFSMLink>() 
             ?? throw new NullReferenceException("Failed to create AIFSMLink instance");
+
         AddLink(link);
+        link.Name = name;
+
         return link;
     }
 
@@ -194,6 +224,42 @@ public class AIFSMNode : AIFSMObject
         }
     }
 
+    public unsafe void AddProcess(AIFSMNodeProcess process, MtAllocator? allocator = null)
+    {
+        if (ProcessCount == _processCapacity)
+        {
+            allocator ??= GetAllocator();
+
+            _processCapacity += 32;
+            var newProcesses = new ObjectArray<AIFSMNodeProcess>(
+                allocator.Alloc(8 * _processCapacity),
+                ProcessCount + 1
+            );
+
+            NativeMemory.Copy(newProcesses.Pointer, Processes.Pointer, (nuint)ProcessCount * 8);
+            newProcesses[ProcessCount] = process;
+
+            allocator.Free(Processes.Address);
+            Processes = newProcesses;
+        }
+        else
+        {
+            Processes[ProcessCount] = process;
+            ProcessCount++;
+        }
+    }
+
+    public AIFSMNodeProcess AddProcess(string containerName)
+    {
+        var process = MtDti.Find("cAIFSMNodeProcess")?.CreateInstance<AIFSMNodeProcess>() 
+            ?? throw new NullReferenceException("Failed to create AIFSMNodeProcess instance");
+
+        AddProcess(process);
+        process.ContainerName = containerName;
+
+        return process;
+    }
+
     public static MtAllocator GetAllocator()
     {
         return InternalCalls.GetAllocator(MtDti.Find("cAIFSMNode"));
@@ -205,12 +271,11 @@ public unsafe class AIFSMLink : MtObject
     public AIFSMLink(nint instance) : base(instance) { }
     public AIFSMLink() { }
 
-
     public ref int DestinationNodeId => ref GetRef<int>(0x8);
     public ref bool HasCondition => ref GetRef<bool>(0xC);
     public ref int ConditionId => ref GetRef<int>(0x10);
     public MtString* NamePtr => GetPtr<MtString>(0x18);
-    public nint NamePPtr => (nint)NamePtr;
+    public nint NamePPtr => Instance + 0x18;
 
     public string Name
     {
@@ -224,22 +289,28 @@ public unsafe class AIFSMLink : MtObject
     }
 }
 
-[StructLayout(LayoutKind.Sequential, Size = 0x50)]
-public unsafe struct AIFSMNodeProcess
+public unsafe class AIFSMNodeProcess : MtObject
 {
-    public nint VTable;
-    public MtString* ContainerNamePtr;
-    public MtString* CategoryNamePtr;
-    public nint Parameter;
-    public nint UpdateProcess;
-    public nint StateProcess;
-    public nint ExitProcess;
-    public nint StatusChangeProcess;
-    public nint ExportProcess;
-    public nint ImportProcess;
+    public AIFSMNodeProcess(nint instance) : base(instance) { }
+    public AIFSMNodeProcess() { }
 
-    public string ContainerName => ContainerNamePtr->GetString();
-    public string CategoryName => CategoryNamePtr->GetString();
+    public string ContainerName
+    {
+        get => GetPtr<MtString>(0x8)->GetString();
+        set => InternalCalls.MtStringAssign(Instance + 0x8, value);
+    }
+
+    public string CategoryName
+    {
+        get => GetPtr<MtString>(0x10)->GetString();
+        set => InternalCalls.MtStringAssign(Instance + 0x10, value);
+    }
+
+    public MtObject? Parameter
+    {
+        get => GetObject<MtObject>(0x18);
+        set => Set(0x18, value?.Instance ?? 0);
+    }
 
     public static MtAllocator GetAllocator()
     {

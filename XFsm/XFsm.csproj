@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWPF>true</UseWPF>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FuzzySharp" Version="2.0.2" />
+    <PackageReference Include="GTranslate" Version="2.1.6" />
     <PackageReference Include="SharpPluginLoader.ImGui" Version="1.90.2" />
-    <PackageReference Include="SharpPluginLoader.InternalCallGenerator" Version="1.1.1" />
+    <PackageReference Include="SharpPluginLoader.InternalCallGenerator" Version="1.1.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,5 +27,9 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="python &quot;$(ProjectDir)cleanup.py&quot; $(TargetDir)" />
+  </Target>
 
 </Project>

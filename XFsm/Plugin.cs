@@ -18,8 +18,6 @@ public partial class Plugin : IPlugin
     private MtDti _fsmDti = null!;
     private string _fsmPath = "";
 
-    private bool _showStyleEditor = false;
-
     public void OnLoad()
     {
         Log.Info("XFsm loaded.");
@@ -151,8 +149,6 @@ public partial class Plugin : IPlugin
 
             ImGui.EndTooltip();
         }
-
-        ImGui.Checkbox("Style Editor", ref _showStyleEditor);
 
         _editor.Render();
 
