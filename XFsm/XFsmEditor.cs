@@ -1177,6 +1177,25 @@ public class XFsmEditor
         };
     }
 
+    // ID Breakdown:
+    // Node Ids:
+    // They are exactly as they are in the game/on disk. They are 32-bit integers.
+    //
+    // Link Ids:
+    // They are 64-bit integers. The upper 32 bits are the source node id, the lower 32 bits are the target node id.
+    // Bits 63 and 31 are set to 1 to distinguish them from node ids.
+    // This limits the maximum number of nodes to 2^31 - 1, which is 2,147,483,647.
+    //
+    // Output Pin Ids:
+    // They are 32-bit integers. The upper 16 bits are the link index, the lower 16 bits are the parent node id.
+    // Bit 31 is set to 1 to distinguish them from other kinds of ids.
+    // This further limits the maximum number of nodes to 2^15 - 1, which is 32,767. This should still be plenty.
+    //
+    // Input Pin Ids:
+    // They are 32-bit integers. Input pin ids only consist of the parent node id,
+    // with bit 30 set to 1 to distinguish them from other kinds of ids.
+    // Nothing else is needed since there can only be one input pin per node.
+
     public static nint MakeLinkId(XFsmNode source, XFsmNode target)
     {
         // Link id format: 0b1SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS1PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
