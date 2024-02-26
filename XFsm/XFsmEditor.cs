@@ -1184,7 +1184,11 @@ public class XFsmEditor
 
     public static int MakeOutputPinId(AIFSMNode parent, int index)
     {
-        return (index << 16) | parent.Id;
+        // Output pin id format: 0b1NNNNNNNNNNNNNNNPPPPPPPPPPPPPPPP
+        // N = Link Index, P = Parent Id
+        // 15 bits for link index, 16 bits for parent id
+        // Due to this, the maximum number of links per node is 32767
+        return (1 << 30) | (index << 16) | parent.Id;
     }
 
     public static int MakeInputPinId(AIFSMNode parent)
