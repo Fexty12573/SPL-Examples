@@ -1179,7 +1179,13 @@ public class XFsmEditor
 
     public static nint MakeLinkId(XFsmNode source, XFsmNode target)
     {
-        return (nint)((long)source.Id << 32 | (uint)target.Id);
+        // Link id format: 0b1SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS1PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+        // S = Source Id, P = Target Id
+        // 31 bits for both source and target id
+        // The extra 0x8000000080000000 is to make the link id unique from node ids
+        // Since without this, if you had a link from node 0 to node 1, the link id would be 1
+        // and if you had a node with id 1, it would conflict with the link id
+        return unchecked((nint)0x8000000080000000) | (nint)((long)source.Id << 32 | (uint)target.Id);
     }
 
     public static int MakeOutputPinId(AIFSMNode parent, int index)
