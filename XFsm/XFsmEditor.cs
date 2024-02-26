@@ -1169,8 +1169,8 @@ public class XFsmEditor
         {
             XFsmWeaponNode wpNode => wpNode.NodeType switch
             {
-                WeaponFsmNodeType.Action => new MtColor(40, 40, 255, 255),
-                WeaponFsmNodeType.Motion => new MtColor(40, 255, 40, 255),
+                WeaponFsmNodeType.Action => new MtColor(90, 90, 255, 255),
+                WeaponFsmNodeType.Motion => new MtColor(140, 220, 140, 255),
                 _ => new MtColor(255, 255, 255, 255)
             },
             _ => new MtColor(255, 255, 255, 255)
@@ -1188,7 +1188,7 @@ public class XFsmEditor
         // N = Link Index, P = Parent Id
         // 15 bits for link index, 16 bits for parent id
         // Due to this, the maximum number of links per node is 32767
-        return (1 << 30) | (index << 16) | parent.Id;
+        return (1 << 31) | (index << 16) | parent.Id;
     }
 
     public static int MakeInputPinId(AIFSMNode parent)
