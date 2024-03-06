@@ -48,4 +48,16 @@ internal static class MtPropertyListExtensions
 
         list.SetPtr(0x8, MemoryUtil.AsPointer(ref property));
     }
+
+    public static unsafe void PrependProperty(this MtPropertyList list, ref MyMtProperty property)
+    {
+        var tail = list.GetPtr<MyMtProperty>(0x10);
+        if (tail != null)
+        {
+            tail->Next = MemoryUtil.AsPointer(ref property);
+            property.Prev = tail;
+        }
+
+        list.SetPtr(0x10, MemoryUtil.AsPointer(ref property));
+    }
 }

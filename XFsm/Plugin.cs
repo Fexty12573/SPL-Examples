@@ -20,9 +20,6 @@ public partial class Plugin : IPlugin
 
     public void OnLoad()
     {
-        Log.Info("XFsm loaded.");
-        InjectProperties();
-
         _editor = new XFsmEditor();
         _fsmDti = MtDti.Find("rAIFSM")!;
         Ensure.NotNull(_fsmDti);

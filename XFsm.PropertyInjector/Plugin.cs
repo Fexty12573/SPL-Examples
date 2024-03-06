@@ -1,15 +1,13 @@
-﻿using SharpPluginLoader.Core.Memory;
-using SharpPluginLoader.Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SharpPluginLoader.Core;
+using SharpPluginLoader.Core.Memory;
 
-namespace XFsm;
+namespace XFsm.PropertyInjector;
 
-public partial class Plugin
+public class Plugin : IPlugin
 {
+    public string Name => "XFsm.PropertyInjector";
+    public string Author => "Fexty";
+
     #region Property Extensions
 
     public delegate void MtObjectDtorDelegate(nint obj, uint flags);
@@ -38,23 +36,29 @@ public partial class Plugin
 
     #endregion
 
+    public void OnLoad()
+    {
+        InjectProperties();
+        Log.Info("[XFsm.PropertyInjector] Finished.");
+    }
+
     private unsafe void InjectProperties()
     {
-        Log.Info("Property Injection");
+        Log.Debug("Property Injection");
 
         // MtPropertyList::newElement
         var results = PatternScanner.Scan(Pattern.FromString("48 8B 49 10 8B C0 48 6B C0 58 48 03 01 48 83 C4 28 C3"));
         Ensure.IsTrue(results.Count > 0);
         _newProperty = new NativeFunction<nint, nint>(results[0] - 21);
 
-        Log.Info($"Found MtPropertyList::newElement at 0x{_newProperty.NativePointer:X}");
+        Log.Debug($"Found MtPropertyList::newElement at 0x{_newProperty.NativePointer:X}");
 
         // "mName" string
         var nameStr = "mName\0"u8;
         _mNameString = MemoryUtil.Alloc<sbyte>(nameStr.Length);
         MemoryUtil.WriteBytes((nint)_mNameString, nameStr.ToArray());
 
-        Log.Info("cAIFSMNode Setup");
+        Log.Debug("cAIFSMNode Setup");
 
         // cAIFSMNode setup
         var dti = MtDti.Find("cAIFSMNode");
@@ -109,7 +113,7 @@ public partial class Plugin
             return result;
         });
 
-        Log.Info("cAIFSMLink Setup");
+        Log.Debug("cAIFSMLink Setup");
 
         // cAIFSMLink setup
         dti = MtDti.Find("cAIFSMLink");
