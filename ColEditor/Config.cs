@@ -30,3 +30,16 @@ public class BonePreset
     [JsonIgnore]
     public ref string RefName => ref _name;
 }
+
+public class Settings
+{
+    public bool ShowBones { get; set; } = true;
+    public bool ShowAllColliders { get; set; } = false;
+    public bool DrawShellColliders { get; set; } = true;
+
+    public MtColor InactiveColliderColor { get; set; } = new(128, 128, 128, 64);
+    public MtColor ActiveColliderSphereColor { get; set; } = new(255, 0, 0, 64);
+    public MtColor ActiveColliderCapsuleColor { get; set; } = new(0, 255, 0, 64);
+    public MtColor ActiveColliderObbColor { get; set; } = new(0, 0, 255, 64);
+    public MtColor NonAttackColliderColor { get; set; } = new(0, 42, 110, 64);
+}

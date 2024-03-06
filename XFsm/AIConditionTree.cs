@@ -9,17 +9,13 @@ public class AIConditionTree : MtObject
     public AIConditionTree() { }
 
     public ref int TreeInfoCount => ref GetRef<int>(0xA8);
-    public PointerArray<AIConditionTreeInfo> TreeList => new(Get<nint>(0xB0), TreeInfoCount);
+    public ObjectArray<AIConditionTreeInfo> TreeList => new(Get<nint>(0xB0), TreeInfoCount);
 }
 
-[StructLayout(LayoutKind.Sequential, Size = 0x28)]
-public struct AIConditionTreeInfo
+public class AIConditionTreeInfo : MtObject
 {
-    public nint VTable;
-    public AIDEnum Name;
-    public nint RootNodePtr;
-
-    public readonly AIConditionTreeNode? RootNode => RootNodePtr == 0 ? null : new AIConditionTreeNode(RootNodePtr);
+    public ref AIDEnum Name => ref GetRefInline<AIDEnum>(0x8);
+    public AIConditionTreeNode? RootNode => GetObject<AIConditionTreeNode>(0x20);
 }
 
 public class AIConditionTreeNode : MtObject

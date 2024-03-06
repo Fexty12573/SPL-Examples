@@ -5,6 +5,7 @@ using System.Text;
 using SharpPluginLoader.Core;
 using SharpPluginLoader.Core.Components;
 using SharpPluginLoader.Core.IO;
+using SharpPluginLoader.Core.Memory;
 using SharpPluginLoader.Core.Models;
 using SharpPluginLoader.Core.MtTypes;
 using SharpPluginLoader.Core.Resources;
@@ -70,6 +71,11 @@ public static class ColExtensions
     public static nint GetCollIndex(this CollisionComponent.Node node)
     {
         return node.Get<nint>(0x98);
+    }
+
+    public static unsafe ref CollIndex GetCollIndexObj(this CollisionComponent.Node node)
+    {
+        return ref MemoryUtil.AsRef(node.GetPtr<CollIndex>(0x98));
     }
 
     public static void RequestKill(this CollisionComponent.Node node)

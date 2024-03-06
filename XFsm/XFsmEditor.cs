@@ -30,6 +30,8 @@ public class XFsmEditor
     private readonly List<XFsmNode> _nodes = [];
     private readonly List<XFsmLink> _links = [];
 
+    private readonly Dictionary<int, XFsmConditionTreeInfo> _treeInfoMap = [];
+
     private bool _showStyleEditor = false;
     private bool _showTranslatedNames = false;
     private bool _inputIntWasActive;
@@ -76,6 +78,7 @@ public class XFsmEditor
     private int _nodeMatchValueInt1 = 0;
     private int _nodeMatchValueInt2 = 0;
     private int _nodeMatchValueInt3 = 0;
+    private int _nodeMatchValueInt4 = 0;
     private string _nodeMatchValueString = "";
 
     private bool _highlightMatchingLinks = false;
@@ -145,10 +148,18 @@ public class XFsmEditor
             return;
         }
 
+        if (fsm.ConditionTree is null)
+        {
+            ImGuiExtensions.NotificationError("Failed to load FSM into Editor, missing condition tree");
+            Log.Error("Failed to load FSM into Editor, missing condition tree");
+            return;
+        }
+
         _fsm = fsm;
 
         _nodes.Clear();
         _links.Clear();
+        _treeInfoMap.Clear();
 
         _isWeaponFsm = fsm.OwnerObjectName.StartsWith("cFSMPl_W");
 
@@ -175,12 +186,18 @@ public class XFsmEditor
         {
             foreach (var output in node.OutputPins)
             {
-                var target = GetNodeById(output.BackingLink.DestinationNodeId);
+                var target = GetNodeById(output.BackingLink.DestinationNodeId, true);
                 if (target is null)
                     continue;
 
                 _links.Add(new XFsmLink(output, target.InputPin, output.BackingLink));
             }
+        }
+
+        
+        foreach (var treeInfo in fsm.ConditionTree.TreeList)
+        {
+            _treeInfoMap.TryAdd(treeInfo.Name.Id, new XFsmConditionTreeInfo(treeInfo));
         }
 
         ImGuiExtensions.NotificationSuccess($"""
@@ -357,7 +374,7 @@ public class XFsmEditor
 
         NodeEditor.Begin("XFSM Editor");
 
-        var cursorTopLeft = ImGui.GetCursorScreenPos();
+        //var cursorTopLeft = ImGui.GetCursorScreenPos();
 
         var style = ImGui.GetStyle();
         var drawList = ImGui.GetWindowDrawList();
@@ -463,7 +480,7 @@ public class XFsmEditor
         }
         NodeEditor.EndDelete();
 
-        ImGui.SetCursorScreenPos(cursorTopLeft);
+        //ImGui.SetCursorScreenPos(cursorTopLeft);
 
         var openPopupPosition = ImGui.GetMousePos();
         NodeEditor.Suspend();
@@ -600,6 +617,14 @@ public class XFsmEditor
 
         ImGui.EndChild();
 
+        ImGui.SameLine();
+
+        ImGui.BeginChild("##right", new Vector2(), ImGuiChildFlags.ResizeX);
+        {
+            ShowRightSidePanel();
+        }
+        ImGui.EndChild();
+
         return;
 
         void ShowLabel(string label, MtColor color)
@@ -680,7 +705,8 @@ public class XFsmEditor
             if (_isWeaponFsm)
             {
                 var wpNode = (XFsmWeaponNode)node;
-                highlight = wpNode.NodeType switch
+                highlight = wpNode.RealId == _nodeMatchValueInt4;
+                highlight |= wpNode.NodeType switch
                 {
                     WeaponFsmNodeType.Action => wpNode.ActionId == _nodeMatchValueInt1,
                     WeaponFsmNodeType.Motion => wpNode.MotionId == _nodeMatchValueInt2
@@ -876,6 +902,7 @@ public class XFsmEditor
                 ImGui.InputInt("Action Id", ref _nodeMatchValueInt1);
                 ImGui.InputInt("Motion Id", ref _nodeMatchValueInt2);
                 ImGui.InputInt("Motion Id Phase 1", ref _nodeMatchValueInt3);
+                ImGui.InputInt("Id", ref _nodeMatchValueInt4);
                 ImGui.InputText("Name", ref _nodeMatchValueString, 260);
 
                 ImGui.Separator();
@@ -887,10 +914,10 @@ public class XFsmEditor
                 ImGui.Text("Match by... (-1 = ignore)");
 
                 if (ImGui.InputInt("Source Node Id##links", ref _linkMatchValueInt1))
-                    _linkMatchSourceNode = GetNodeById(_linkMatchValueInt1);
+                    _linkMatchSourceNode = GetNodeById(_linkMatchValueInt1, true);
 
                 if (ImGui.InputInt("Target Node Id##links", ref _linkMatchValueInt2))
-                    _linkMatchTargetNode = GetNodeById(_linkMatchValueInt2);
+                    _linkMatchTargetNode = GetNodeById(_linkMatchValueInt2, true);
 
                 ImGui.Separator();
 
@@ -904,15 +931,31 @@ public class XFsmEditor
                 }
 
                 if (ImGui.InputInt("Source Node Id##flow", ref _flowSourceNodeId))
-                    _flowSourceNode = GetNodeById(_flowSourceNodeId);
+                    _flowSourceNode = GetNodeById(_flowSourceNodeId, true);
             }
             ImGui.PopID();
         }
     }
 
+    private void ShowRightSidePanel()
+    {
+        Span<nint> selectedLinks = stackalloc nint[1];
+        if (NodeEditor.GetSelectedLinkCount() == 1)
+        {
+            NodeEditor.GetSelectedLinks(selectedLinks, 1);
+
+            var link = GetLinkById(selectedLinks[0]);
+            if (link is not null)
+            {
+                ImGui.SeparatorText("Selected Link");
+                ShowLinkProperties(link);
+            }
+        }
+    }
+
     private void ShowNodeProperties(XFsmNode node)
     {
-        ImGui.Text($"Node Id: {node.Id}");
+        ImGui.Text($"Node Id: {node.RealId}");
         var name = node.Name;
         ImGui.InputText("Name", ref name, 260);
         node.Name = name;
@@ -994,6 +1037,28 @@ public class XFsmEditor
         }
 
 
+    }
+
+    private void ShowLinkProperties(XFsmLink link)
+    {
+        ImGui.Text($"Source: {link.Source.Parent.Name}");
+        ImGui.Text($"Target: {link.Target.Parent.Name}");
+
+        var fsmLink = link.Source.BackingLink;
+        if (fsmLink.HasCondition)
+        {
+            ImGui.Text("Has Condition");
+            var condition = GetConditionById(fsmLink.ConditionId);
+            if (condition is not null)
+            {
+                ImGui.Text($"Condition Id: {condition.Id}");
+                ImGui.Text($"Condition Name: {condition.Name}");
+            }
+            else
+            {
+                ImGui.Text("Condition not found");
+            }
+        }
     }
 
     private void DrawPinIcon(XFsmPin pin, bool connected)
@@ -1125,9 +1190,11 @@ public class XFsmEditor
         return fsmNode;
     }
 
-    private XFsmNode? GetNodeById(nint id)
+    private XFsmNode? GetNodeById(nint id, bool useRealId = false)
     {
-        return _nodes.FirstOrDefault(x => x.Id == id);
+        return useRealId
+            ? _nodes.Find(n => n.RealId == id)
+            : _nodes.Find(n => n.Id == id);
     }
 
     private XFsmPin? GetPinById(nint id)
@@ -1158,6 +1225,11 @@ public class XFsmEditor
         return null;
     }
 
+    private AIConditionTreeInfo? GetConditionById(int id)
+    {
+        return _treeInfoMap.GetValueOrDefault(id);
+    }
+
     private int GetNextFreeNodeId()
     {
         return _nodes.Count == 0 ? 0 : _nodes.Max(x => x.Id) + 1;
@@ -1179,7 +1251,7 @@ public class XFsmEditor
 
     // ID Breakdown:
     // Node Ids:
-    // They are exactly as they are in the game/on disk. They are 32-bit integers.
+    // They are 32-bit integers. Bit 29 is set to 1 because 0 is reserved for invalid ids.
     //
     // Link Ids:
     // They are 64-bit integers. The upper 32 bits are the source node id, the lower 32 bits are the target node id.
@@ -1195,6 +1267,11 @@ public class XFsmEditor
     // They are 32-bit integers. Input pin ids only consist of the parent node id,
     // with bit 30 set to 1 to distinguish them from other kinds of ids.
     // Nothing else is needed since there can only be one input pin per node.
+
+    public static int MakeNodeId(AIFSMNode node)
+    {
+        return (1 << 29) | node.Id;
+    }
 
     public static nint MakeLinkId(XFsmNode source, XFsmNode target)
     {
@@ -1224,7 +1301,8 @@ public class XFsmEditor
 
 public class XFsmNode
 {
-    public int Id => BackingNode.Id;
+    public int Id { get; }
+    public int RealId => BackingNode.Id;
     public string Name { get; set; }
     public Vector2 Position { get; set; }
 
@@ -1236,6 +1314,7 @@ public class XFsmNode
 
     public XFsmNode(AIFSMNode node)
     {
+        Id = XFsmEditor.MakeNodeId(node);
         BackingNode = node;
         Name = node.Name;
         InputPin = new XFsmInputPin(this);
@@ -1393,6 +1472,66 @@ public class XFsmLink(XFsmOutputPin source, XFsmInputPin target, AIFSMLink link)
     public XFsmOutputPin Source { get; } = source;
     public XFsmInputPin Target { get; } = target;
     public AIFSMLink BackingLink { get; } = link;
+}
+
+public class XFsmConditionTreeInfo(AIConditionTreeInfo info)
+{
+    public int Id => BackingInfo.Name.Id;
+    public AIConditionTreeInfo BackingInfo { get; } = info;
+    public AIConditionTreeNode? RootNode { get; } = info.RootNode;
+}
+
+public class XFsmConditionTreeNode(AIConditionTreeNode node, ConditionTreeNodeType type)
+{
+    public AIConditionTreeNode BackingNode { get; } = node;
+    public ConditionTreeNodeType NodeType { get; } = type;
+
+    protected static ConditionTreeNodeType GetNodeType(AIConditionTreeNode node)
+    {
+        return node.GetDti()?.Name switch
+        {
+            "rAIConditionTree::ConstEnumNode" => ConditionTreeNodeType.ConstEnumNode,
+            "rAIConditionTree::ConstF32Node" => ConditionTreeNodeType.ConstF32Node,
+            "rAIConditionTree::ConstF64Node" => ConditionTreeNodeType.ConstF64Node,
+            "rAIConditionTree::ConstS32Node" => ConditionTreeNodeType.ConstS32Node,
+            "rAIConditionTree::ConstS64Node" => ConditionTreeNodeType.ConstS64Node,
+            "rAIConditionTree::ConstStringNode" => ConditionTreeNodeType.ConstStringNode,
+            "rAIConditionTree::OperationNode" => ConditionTreeNodeType.OperationNode,
+            "rAIConditionTree::StateNode" => ConditionTreeNodeType.StateNode,
+            "rAIConditionTree::VariableNode" => ConditionTreeNodeType.VariableNode,
+            _ => throw new ArgumentOutOfRangeException(nameof(node), node, null)
+        };
+    }
+}
+
+public class XFsmConditionTreeOperationNode : XFsmConditionTreeNode
+{
+    public new AIConditionTreeOperationNode BackingNode { get; }
+    public ref OperatorType Operator => ref BackingNode.Operator;
+    public IList<XFsmConditionTreeNode> Children { get; }
+
+    public XFsmConditionTreeOperationNode(AIConditionTreeOperationNode node)
+        : base(node, ConditionTreeNodeType.OperationNode)
+    {
+        BackingNode = node;
+
+        var opNode = node.As<AIConditionTreeOperationNode>();
+        Operation = opNode.Operator;
+        Children = opNode.Children.Select(n => new XFsmConditionTreeNode(n, GetNodeType(n))).ToList();
+    }
+}
+
+public enum ConditionTreeNodeType
+{
+    ConstEnumNode,
+    ConstF32Node,
+    ConstF64Node,
+    ConstS32Node,
+    ConstS64Node,
+    ConstStringNode,
+    OperationNode,
+    StateNode,
+    VariableNode,
 }
 
 public enum WeaponFsmNodeType

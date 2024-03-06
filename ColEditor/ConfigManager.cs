@@ -16,9 +16,11 @@ public partial class Plugin
     private string _currentConfig = string.Empty;
     private uint _boneToAdd = 0;
     private BonePreset? _presetToAddTo = null;
+    private Settings _settings = null!;
 
     private const string PluginDirectory = "nativePC/plugins/CSharp/ColEditor/";
     private const string DefaultConfig = "$Default.Config.json";
+    private const string SettingsFile = $"{PluginDirectory}Settings.json";
     private static JsonSerializerOptions JsonOptions { get; } = new()
     {
         WriteIndented = true,
@@ -59,6 +61,20 @@ public partial class Plugin
         {
             _config = new Config();
             SaveConfig(PluginDirectory + DefaultConfig, _config);
+        }
+
+        _settings = new Settings();
+        if (File.Exists(SettingsFile))
+        {
+            using var fs = File.OpenRead(SettingsFile);
+            var settings = JsonSerializer.Deserialize<Settings>(fs, JsonOptions);
+            if (settings is not null)
+                _settings = settings;
+        }
+        else
+        {
+            using var fs = File.Create(SettingsFile);
+            JsonSerializer.Serialize(fs, _settings, JsonOptions);
         }
     }
 
@@ -203,5 +219,11 @@ public partial class Plugin
     {
         using var fs = File.Create(filePath);
         JsonSerializer.Serialize(fs, config, JsonOptions);
+    }
+
+    private void SaveSettings()
+    {
+        using var fs = File.Create(SettingsFile);
+        JsonSerializer.Serialize(fs, _settings, JsonOptions);
     }
 }

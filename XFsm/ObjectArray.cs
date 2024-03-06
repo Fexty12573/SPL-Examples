@@ -6,17 +6,17 @@ namespace XFsm;
 
 public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> where T : MtObject, new()
 {
-    private readonly nint* _pointer = (nint*)pointer;
-    public int Count => count;
-    public nint Address => (nint)_pointer;
-    public nint* Pointer => _pointer;
+    public int Count { get; } = count;
+    public nint Address => (nint)Pointer;
+    public nint* Pointer { get; } = (nint*)pointer;
+
     public T this[int index]
     {
-        get => new() { Instance = _pointer[index] };
-        set => _pointer[index] = value.Instance;
+        get => new() { Instance = Pointer[index] };
+        set => Pointer[index] = value.Instance;
     }
 
-    public IEnumerator<T> GetEnumerator() =>new Enumerator(_pointer, count);
+    public IEnumerator<T> GetEnumerator() =>new Enumerator(Pointer, Count);
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public struct Enumerator(nint* pointer, int count) : IEnumerator<T>

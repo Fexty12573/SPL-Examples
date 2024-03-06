@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Collections.Generic;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
@@ -20,6 +21,7 @@ namespace ColEditor;
 
 using ActiveNode = (CollisionComponent.Node node, bool visible);
 using CollIdentifier = (int bankId, uint uniqueId, nint clidPtr);
+using ActiveShell = (Unit shell, MtArray<CollisionComponent.Node> nodes);
 
 public partial class Plugin : IPlugin
 {
@@ -46,9 +48,14 @@ public partial class Plugin : IPlugin
     private Vector4 _defaultJointColor = new(1, 1, 1, 0.5f);
     private float _jointRadius = 1f;
 
+#if DEBUG
     private ImGuiDti _imGuiDti = null!;
     private string _singletonName = "sMhScene";
     private string _propFilter = "";
+#endif
+
+    private MoveLine _moveLine = null!;
+    private readonly Dictionary<nint, ActiveShell> _activeShells = [];
 
     #endregion
 
@@ -74,9 +81,19 @@ public partial class Plugin : IPlugin
     private NativeFunction<nint, string, nint> _mtStringSet;
     private NativeAction<nint, int, uint, bool, bool> _createNodeFromUid;
     private Hook<CreateNodeDelegate> _createNodeHook = null!;
+    private Hook<CreateShellDelegate> _createShellHook = null!;
+    private Hook<DestroyShellDelegate> _destroyShellHook = null!;
+    private Hook<InitShellDelegate> _initShellHook = null!;
 
     private delegate nint CreateNodeDelegate(nint colComponent, nint col, nint atk, nint clnd, nint catk, nint clid,
         bool motSync, uint explicitUid);
+
+    private delegate nint CreateShellDelegate(nint shlp, nint parent1, nint parent2, nint param, int shllIndex,
+        int shlpIndex, byte register);
+
+    private delegate void InitShellDelegate(nint shell);
+
+    private delegate void DestroyShellDelegate(nint shell);
 
     #endregion
 
@@ -117,43 +134,58 @@ public partial class Plugin : IPlugin
 
                 return node;
             });
-        
+
+#if DEBUG
         _imGuiDti = new ImGuiDti(SingletonManager.GetSingleton("sMhScene")!);
+#endif
+
+        var line = UnitManager.GetLine(16);
+        Ensure.NotNull(line);
+
+        _moveLine = line;
+
+        address = FindFunction("48 83 EC 20 48 8B D9 48 81 C1 F0 2F 00 00");
+        Ensure.IsTrue(address != 0);
+
+        _destroyShellHook = Hook.Create<DestroyShellDelegate>(address - 20, shell =>
+        {
+            _activeShells.Remove(shell);
+            _destroyShellHook.Original(shell);
+        });
+
+        var temp = MtDti.Find("uShellBase")?.CreateInstance<MtObject>();
+        if (temp is not null)
+        {
+            _initShellHook = Hook.Create<InitShellDelegate>(temp.GetVirtualFunction(5), shell =>
+            {
+                _initShellHook.Original(shell);
+                if (shell == 0)
+                    return;
+
+                var shellObj = new Unit(shell);
+                var colComponent = shellObj.ComponentManager.Find("cpObjCollision")?.As<CollisionComponent>();
+                if (colComponent is null)
+                {
+                    Log.Warn($"Failed to find cpObjCollision on {shellObj}");
+                    return;
+                }
+
+                _activeShells.Add(shell, (shellObj, colComponent.Nodes));
+            });
+
+            temp.Destroy(true);
+        }
+        else
+        {
+            Log.Error("Failed to find uShellBase and create an instance of it");
+        }
     }
 
     public void OnRender()
     {
-        if (_selectedModel is not null)
+        // Draw Bones
+        if (_selectedModel is not null && _settings.ShowBones)
         {
-            //if (_selectedModel.Is("uCharacterModel"))
-            //{
-            //    var stageAdjustCollision = _selectedModel.Instance + 0xA40;
-            //    ref var bb = ref MemoryUtil.GetRef<MtAabb>(stageAdjustCollision + 0x20);
-
-            //    // Draw the bounding box as a series of lines
-            //    var min = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x80);
-            //    var max = MemoryUtil.Read<Vector3>(stageAdjustCollision + 0x70);
-
-            //    Span<Vector3> corners =
-            //    [
-            //        new Vector3(min.X, min.Y, min.Z),
-            //        new Vector3(max.X, min.Y, min.Z),
-            //        new Vector3(max.X, min.Y, max.Z),
-            //        new Vector3(min.X, min.Y, max.Z),
-            //        new Vector3(min.X, max.Y, min.Z),
-            //        new Vector3(max.X, max.Y, min.Z),
-            //        new Vector3(max.X, max.Y, max.Z),
-            //        new Vector3(min.X, max.Y, max.Z)
-            //    ];
-
-            //    for (var i = 0; i < 4; i++)
-            //    {
-            //        Primitives.RenderLine(corners[i], corners[(i + 1) % 4], Color.White);
-            //        Primitives.RenderLine(corners[i + 4], corners[(i + 1) % 4 + 4], Color.White);
-            //        Primitives.RenderLine(corners[i], corners[i + 4], Color.White);
-            //    }
-            //}
-
             var joints = _selectedModel.GetJoints();
             var defaultColor = _config.DefaultBoneColor.ToVector4();
 
@@ -184,32 +216,52 @@ public partial class Plugin : IPlugin
             }
         }
 
+        // Draw Colliders
         foreach (var (node, visible) in _nodeMap.Values)
         {
-            if (!visible || node is null)
+            if ((!visible && !_settings.ShowAllColliders) || node is null)
                 continue;
 
+            RenderNode(node);
+        }
+
+        // Draw Shell Colliders
+        if (_settings.DrawShellColliders)
+        {
+            foreach (var (_, nodes) in _activeShells.Values)
+            {
+                foreach (var node in nodes)
+                {
+                    RenderNode(node);
+                }
+            }
+        }
+
+        return;
+
+        void RenderNode(CollisionComponent.Node node)
+        {
             foreach (var geometry in node.Geometries)
             {
                 if (geometry.Geom is null) continue;
 
-                Vector4 color;
+                MtColor color;
                 if (node.IsActive)
                 {
                     color = geometry.Geom.Type switch
                     {
-                        GeometryType.Sphere => new Vector4(1, 0, 0, 0.25f),
-                        GeometryType.Capsule => new Vector4(0, 1, 0, 0.25f),
-                        GeometryType.Obb => new Vector4(0, 0, 1, 0.25f),
-                        _ => new Vector4(1, 1, 1, 0.25f)
+                        GeometryType.Sphere => _settings.ActiveColliderSphereColor,
+                        GeometryType.Capsule => _settings.ActiveColliderCapsuleColor,
+                        GeometryType.Obb => _settings.ActiveColliderObbColor,
+                        _ => new MtColor(255, 255, 255, 64)
                     };
 
                     if (node.Get<nint>(0x90) == 0) // AttackParam
-                        color = new Vector4(0f, 0.165f, 0.431f, 0.25f);
+                        color = _settings.NonAttackColliderColor;
                 }
                 else
                 {
-                    color = new Vector4(0.5f, 0.5f, 0.5f, 0.25f);
+                    color = _settings.InactiveColliderColor;
                 }
 
                 switch (geometry.Geom.Type)
@@ -230,8 +282,8 @@ public partial class Plugin : IPlugin
 
     public void OnImGuiFreeRender()
     {
-        var models = GetModels();
 
+#if DEBUG
         if (_selectedModel is not null)
         {
             var bgDrawList = ImGui.GetBackgroundDrawList();
@@ -281,6 +333,7 @@ public partial class Plugin : IPlugin
                 }
             }
         }
+#endif
 
         if (!Renderer.MenuShown)
             return;
@@ -293,6 +346,7 @@ public partial class Plugin : IPlugin
             goto Exit;
         }
 
+#if DEBUG
         if (ImGui.CollapsingHeader("Singleton Stuff"))
         {
             if (ImGui.InputText("Singleton Name", ref _singletonName, 0x80))
@@ -306,6 +360,19 @@ public partial class Plugin : IPlugin
 
             _imGuiDti.Draw(_propFilter);
         }
+#endif
+
+        var models = GetModels();
+        if (_selectedModel is not null && !models.Contains(_selectedModel))
+        {
+            _selectedModel = null;
+            _selectedColComponent = null;
+            _selectedCollision = null;
+            _selectedClid = null;
+            _selectedClnd = null;
+            _selectedAtk = null;
+            _selectedOap = null;
+        }
 
         if (ImGui.BeginMenuBar())
         {
@@ -315,16 +382,51 @@ public partial class Plugin : IPlugin
                 _textColor = _config.TextColor.ToVector4();
                 _jointRadius = _config.BoneRadius;
                 _defaultJointColor = _config.DefaultBoneColor.ToVector4();
+                var showBones = _settings.ShowBones;
+
+                var showAllColliders = _settings.ShowAllColliders;
+                var inactiveColliderColor = _settings.InactiveColliderColor.ToVector4();
+                var drawShellColliders = _settings.DrawShellColliders;
+                var activeColliderSphereColor = _settings.ActiveColliderSphereColor.ToVector4();
+                var activeColliderCapsuleColor = _settings.ActiveColliderCapsuleColor.ToVector4();
+                var activeColliderObbColor = _settings.ActiveColliderObbColor.ToVector4();
+                var nonAttackColliderColor = _settings.NonAttackColliderColor.ToVector4();
 
                 ImGui.DragFloat("Text Size", ref _textSize, 0.2f);
                 ImGui.ColorEdit4("Text Color", ref _textColor);
                 ImGui.DragFloat("Bone Radius", ref _jointRadius);
                 ImGui.ColorEdit4("Default Joint Color", ref _defaultJointColor);
 
+                ImGui.SeparatorText("Global Settings");
+
+                ImGui.Checkbox("Show Bones", ref showBones);
+                ImGui.Checkbox("Show All Colliders", ref showAllColliders);
+                ImGui.Checkbox("Show Shell Colliders", ref drawShellColliders);
+                ImGui.ColorEdit4("Inactive Collider Color", ref inactiveColliderColor);
+                ImGui.ColorEdit4("Active Collider Sphere Color", ref activeColliderSphereColor);
+                ImGui.ColorEdit4("Active Collider Capsule Color", ref activeColliderCapsuleColor);
+                ImGui.ColorEdit4("Active Collider Obb Color", ref activeColliderObbColor);
+                ImGui.ColorEdit4("Non-Attack Collider Color", ref nonAttackColliderColor);
+
                 _config.TextSize = _textSize;
                 _config.TextColor = MtColor.FromVector4(_textColor);
                 _config.BoneRadius = _jointRadius;
                 _config.DefaultBoneColor = MtColor.FromVector4(_defaultJointColor);
+                _settings.ShowBones = showBones;
+
+                _settings.ShowAllColliders = showAllColliders;
+                _settings.DrawShellColliders = drawShellColliders;
+                _settings.InactiveColliderColor = MtColor.FromVector4(inactiveColliderColor);
+                _settings.ActiveColliderSphereColor = MtColor.FromVector4(activeColliderSphereColor);
+                _settings.ActiveColliderCapsuleColor = MtColor.FromVector4(activeColliderCapsuleColor);
+                _settings.ActiveColliderObbColor = MtColor.FromVector4(activeColliderObbColor);
+                _settings.NonAttackColliderColor = MtColor.FromVector4(nonAttackColliderColor);
+
+                ImGui.Separator();
+                if (ImGui.Button("Save"))
+                {
+                    SaveSettings();
+                }
 
                 ImGui.EndMenu();
             }
@@ -445,6 +547,10 @@ public partial class Plugin : IPlugin
             var weapon = player.CurrentWeapon;
             if (weapon is not null)
                 entities.Add(weapon);
+
+            var claw = player.GetObject<Model>(0x8918);
+            if (claw is not null)
+                entities.Add(claw);
         }
 
         entities.AddRange(Monster.GetAllMonsters());
@@ -491,10 +597,18 @@ public partial class Plugin : IPlugin
                 {
                     node.IsActive = false;
                     vp.node = node;
+
+                    _nodeMap[clidPtr] = vp;
+                }
+                else
+                {
+                    ImGuiExtensions.NotificationError($"Failed to create node for CLID {clid.UniqueId}");
                 }
             }
-
-            _nodeMap[clidPtr] = vp;
+            else
+            {
+                _nodeMap[clidPtr] = vp;
+            }
         }
 
         ImGui.SameLine();
@@ -880,8 +994,8 @@ public partial class Plugin : IPlugin
             true,
             false
         );
-
-        return colComponent.Nodes.Find(x => x.GetCollIndex() == uniqueId);
+        
+        return colComponent.Nodes.Find(x => x.GetCollIndexObj().UniqueId == uniqueId);
     }
 
     private static void ImGuiHitDelay(ref HitDelay hitDelay, string name)
@@ -910,6 +1024,6 @@ public partial class Plugin : IPlugin
     private static nint FindFunction(string patternString)
     {
         var pattern = Pattern.FromString(patternString);
-        return PatternScanner.Scan(pattern).FirstOrDefault(0);
+        return PatternScanner.FindFirst(pattern);
     }
 }
