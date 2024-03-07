@@ -544,26 +544,49 @@ public class XFsmEditor
                     ImGui.CloseCurrentPopup();
                 }
 
+                var pinIndex = output.Parent.OutputPins.IndexOf(output);
                 var linkIndex = -1;
                 if (ImGui.MenuItem("Insert Link Before"))
                 {
-                    linkIndex = output.Parent.OutputPins.IndexOf(output);
+                    linkIndex = pinIndex;
                 }
 
                 if (ImGui.MenuItem("Insert Link After"))
                 {
-                    linkIndex = output.Parent.OutputPins.IndexOf(output) + 1;
+                    linkIndex = pinIndex + 1;
+                }
+
+                var colorsPushed = false;
+                if (pinIndex == 0)
+                {
+                    // Pin can't be moved up, so disable the button
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    colorsPushed = true;
                 }
 
                 if (ImGui.SmallButton(FA6.ArrowUp))
                 {
-                    // TODO: Move pin up
+                    output.Parent.OutputPins.Reverse(pinIndex - 1, 2);
+                    output.Parent.BackingNode.Links.Reverse(pinIndex - 1, 2);
                 }
+
+                if (colorsPushed && pinIndex < output.Parent.OutputPins.Count - 1)
+                {
+                    ImGui.PopStyleColor(3);
+                    colorsPushed = false;
+                }
+
                 ImGui.SameLine();
                 if (ImGui.SmallButton(FA6.ArrowDown))
                 {
-                    // TODO: Move pin down
+                    output.Parent.OutputPins.Reverse(pinIndex, 2);
+                    output.Parent.BackingNode.Links.Reverse(pinIndex, 2);
                 }
+
+                if (colorsPushed)
+                    ImGui.PopStyleColor(3);
 
                 if (linkIndex != -1)
                 {
