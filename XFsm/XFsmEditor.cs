@@ -373,7 +373,7 @@ public class XFsmEditor
 
         ImGui.SameLine();
 
-        ImGui.BeginChild("##main");
+        ImGui.BeginChild("##center");
 
         NodeEditor.Begin("XFSM Editor");
 
@@ -625,6 +625,12 @@ public class XFsmEditor
         ImGui.BeginChild("##right", new Vector2(), ImGuiChildFlags.ResizeX);
         {
             ShowRightSidePanel();
+        }
+        ImGui.EndChild();
+
+        ImGui.BeginChild("##bottom", new Vector2(), ImGuiChildFlags.ResizeY);
+        {
+            ShowConditionTree();
         }
         ImGui.EndChild();
 
@@ -1062,7 +1068,7 @@ public class XFsmEditor
         ImGui.Text($"Condition Id: {condition.Id}");
         ImGui.Text($"Condition Name: {condition.BackingInfo.Name.Name}");
 
-        DisplayConditionNode(condition.RootNode);
+        DisplayConditionNode(condition.RootNode, condition);
 
         if (ImGui.BeginPopup("Add Child"))
         {
@@ -1130,180 +1136,18 @@ public class XFsmEditor
 
         return;
 
-        void DisplayConditionNode(AIConditionTreeNode? node, AIConditionTreeNode? parent = null, int index = 0)
+        
+    }
+
+    private void ShowConditionTree()
+    {
+        foreach (var (id, treeInfo) in _treeInfoMap)
         {
-            if (node is null)
-                return;
-
-            ImGui.PushID(node.Instance);
-
-            var typeChanged = false;
-            if (ImGui.BeginCombo($"##conditionNode{node.Instance}", $"{node.Type}##conditionNode{node.Instance}"))
+            if (ImGui.TreeNode(id.ToString()))
             {
-                foreach (var type in Enum.GetValues<ConditionTreeNodeType>())
-                {
-                    var isSelected = node.Type == type;
-                    if (ImGui.Selectable(type.ToString(), isSelected))
-                    {
-                        if (parent is null)
-                        {
-                            var root = AIConditionTreeNode.Create(type);
-                            condition.RootNode?.Destroy(true);
-                            condition.RootNode = root;
-                            condition.BackingInfo.RootNode = root;
-                        }
-                        else
-                        {
-                            parent?.SetChild(index, type);
-                        }
-                        
-                        typeChanged = true;
-                    }
-
-                    if (isSelected)
-                    {
-                        ImGui.SetItemDefaultFocus();
-                    }
-                }
-
-                ImGui.EndCombo();
+                DisplayConditionNode(treeInfo.RootNode, treeInfo);
+                ImGui.TreePop();
             }
-
-            if (typeChanged)
-            {
-                ImGui.PopID();
-
-                // The call to SetChild destroyed the current node
-                // so we need to return here to avoid using the destroyed node
-                return;
-            }
-
-            switch (node.Type)
-            {
-                case ConditionTreeNodeType.ConstEnumNode:
-                    ImGui.InputInt("Enum Value", ref node.Value<int>(0x8));
-                    break;
-                case ConditionTreeNodeType.ConstF32Node:
-                    ImGui.DragFloat("F32 Value", ref node.Value<float>());
-                    break;
-                case ConditionTreeNodeType.ConstF64Node:
-                    ImGui.DragScalar("F64 Value", ImGuiDataType.Double, MemoryUtil.AddressOf(ref node.Value<double>()));
-                    break;
-                case ConditionTreeNodeType.ConstS32Node:
-                    ImGui.InputInt("S32 Value", ref node.Value<int>());
-                    break;
-                case ConditionTreeNodeType.ConstS64Node:
-                    ImGuiExtensions.InputScalar("S64 Value", ref node.Value<long>());
-                    break;
-                case ConditionTreeNodeType.ConstStringNode:
-                {
-                    var strNode = node.As<AIConditionTreeConstStringNode>();
-                    var str = strNode.Value;
-                    if (ImGui.InputText("String Value", ref str, 1024))
-                    {
-                        strNode.Value = str;
-                    }
-                    break;
-                }
-                case ConditionTreeNodeType.OperationNode:
-                    ImGui.Combo("Operator", ref node.Value<int>(), OperatorTypeNames, OperatorTypeNames.Length);
-                    break;
-                case ConditionTreeNodeType.StateNode:
-                    ImGui.InputInt("State Id", ref node.Value<int>());
-                    break;
-                case ConditionTreeNodeType.VariableNode:
-                {
-                    var varNode = node.As<AIConditionTreeVariableNode>();
-                    ImGui.SeparatorText("Variable");
-                    DisplayVariableInfo(ref varNode.Variable);
-                    ImGui.SeparatorText("Index Variable");
-                    DisplayVariableInfo(ref varNode.IndexVariable);
-                    ImGui.Separator();
-                    ImGui.Checkbox("Is BitNo", ref varNode.IsBitNo);
-                    ImGui.Checkbox("Is Array", ref varNode.IsArray);
-                    ImGui.Checkbox("Is Dynamic Index", ref varNode.IsDynamicIndex);
-                    ImGui.InputInt("Index", ref varNode.Index);
-                    ImGui.Checkbox("Use Index Enum", ref varNode.UseIndexEnum);
-                    if (varNode.UseIndexEnum)
-                    {
-                        ImGui.SeparatorText("Index Enum");
-                        DisplayEnumProp(ref varNode.IndexEnum);
-                    }
-                    break;
-                }
-            }
-
-            if (ImGui.Button("Add Child"))
-            {
-                ImGui.OpenPopup("Add Child");
-            }
-
-            ImGui.SeparatorText("Children");
-            ImGui.Indent();
-
-            int i = 0;
-            foreach (var child in node.Children)
-            {
-                ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
-                
-                DisplayConditionNode(child, node, i);
-                i++;
-
-                ImGui.EndChild();
-            }
-
-            ImGui.Unindent();
-            ImGui.PopID();
-        }
-
-        static void DisplayVariableInfo(ref AIConditionTreeVariableNode.VariableInfo variable)
-        {
-            var propertyName = variable.PropertyName;
-            var ownerName = variable.OwnerName;
-
-            ImGui.PushID(MemoryUtil.AddressOf(ref variable));
-
-            if (ImGui.InputText("Property Name", ref propertyName, 260))
-            {
-                variable.PropertyName = propertyName;
-            }
-
-            if (ImGui.InputText("Owner Name", ref ownerName, 260))
-            {
-                variable.OwnerName = ownerName;
-            }
-
-            ImGui.Checkbox("Is Singleton Owner", ref variable.IsSingletonOwner);
-
-            ImGui.PopID();
-        }
-
-        static void DisplayEnumProp(ref EnumProp prop)
-        {
-            ImGui.PushID(MemoryUtil.AddressOf(ref prop));
-
-            var name = prop.Name;
-            var enumName = prop.EnumName;
-
-            ImGui.InputInt("Value", ref prop.Value);
-
-            if (ImGui.InputText("Name", ref name, 260))
-                prop.Name = name;
-
-            if (ImGui.InputText("Enum Name", ref enumName, 260))
-                prop.EnumName = enumName;
-
-            ImGuiExtensions.InputScalar("Name Hash", ref prop.NameCrc, format: "%X");
-            ImGui.SameLine();
-            if (ImGui.Button("Auto-Fill##nameHash"))
-                prop.NameCrc = Utility.Crc32(name);
-
-            ImGuiExtensions.InputScalar("Enum Name Hash", ref prop.EnumNameCrc, format: "%X");
-            ImGui.SameLine();
-            if (ImGui.Button("Auto-Fill##enumNameHash"))
-                prop.EnumNameCrc = Utility.Crc32(enumName);
-
-            ImGui.PopID();
         }
     }
 
@@ -1390,6 +1234,182 @@ public class XFsmEditor
             }
         }
         ImGui.End();
+    }
+
+    private static void DisplayConditionNode(AIConditionTreeNode? node, object? parent, int index = 0)
+    {
+        if (node is null)
+            return;
+
+        ImGui.PushID(node.Instance);
+
+        var typeChanged = false;
+        if (ImGui.BeginCombo($"##conditionNode{node.Instance}", $"{node.Type}##conditionNode{node.Instance}"))
+        {
+            foreach (var type in Enum.GetValues<ConditionTreeNodeType>())
+            {
+                var isSelected = node.Type == type;
+                if (ImGui.Selectable(type.ToString(), isSelected))
+                {
+                    if (parent is XFsmConditionTreeInfo condition)
+                    {
+                        var root = AIConditionTreeNode.Create(type);
+                        condition.RootNode?.Destroy(true);
+                        condition.RootNode = root;
+                        condition.BackingInfo.RootNode = root;
+                    }
+                    else if (parent is AIConditionTreeNode p)
+                    {
+                        p?.SetChild(index, type);
+                    }
+
+                    typeChanged = true;
+                }
+
+                if (isSelected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        if (typeChanged)
+        {
+            ImGui.PopID();
+
+            // The call to SetChild destroyed the current node
+            // so we need to return here to avoid using the destroyed node
+            return;
+        }
+
+        switch (node.Type)
+        {
+            case ConditionTreeNodeType.ConstEnumNode:
+                ImGui.InputInt("Enum Value", ref node.Value<int>(0x8));
+                break;
+            case ConditionTreeNodeType.ConstF32Node:
+                ImGui.DragFloat("F32 Value", ref node.Value<float>());
+                break;
+            case ConditionTreeNodeType.ConstF64Node:
+                ImGui.DragScalar("F64 Value", ImGuiDataType.Double, MemoryUtil.AddressOf(ref node.Value<double>()));
+                break;
+            case ConditionTreeNodeType.ConstS32Node:
+                ImGui.InputInt("S32 Value", ref node.Value<int>());
+                break;
+            case ConditionTreeNodeType.ConstS64Node:
+                ImGuiExtensions.InputScalar("S64 Value", ref node.Value<long>());
+                break;
+            case ConditionTreeNodeType.ConstStringNode:
+            {
+                var strNode = node.As<AIConditionTreeConstStringNode>();
+                var str = strNode.Value;
+                if (ImGui.InputText("String Value", ref str, 1024))
+                {
+                    strNode.Value = str;
+                }
+                break;
+            }
+            case ConditionTreeNodeType.OperationNode:
+                ImGui.Combo("Operator", ref node.Value<int>(), OperatorTypeNames, OperatorTypeNames.Length);
+                break;
+            case ConditionTreeNodeType.StateNode:
+                ImGui.InputInt("State Id", ref node.Value<int>());
+                break;
+            case ConditionTreeNodeType.VariableNode:
+            {
+                var varNode = node.As<AIConditionTreeVariableNode>();
+                ImGui.SeparatorText("Variable");
+                DisplayVariableInfo(ref varNode.Variable);
+                ImGui.SeparatorText("Index Variable");
+                DisplayVariableInfo(ref varNode.IndexVariable);
+                ImGui.Separator();
+                ImGui.Checkbox("Is BitNo", ref varNode.IsBitNo);
+                ImGui.Checkbox("Is Array", ref varNode.IsArray);
+                ImGui.Checkbox("Is Dynamic Index", ref varNode.IsDynamicIndex);
+                ImGui.InputInt("Index", ref varNode.Index);
+                ImGui.Checkbox("Use Index Enum", ref varNode.UseIndexEnum);
+                if (varNode.UseIndexEnum)
+                {
+                    ImGui.SeparatorText("Index Enum");
+                    DisplayEnumProp(ref varNode.IndexEnum);
+                }
+                break;
+            }
+        }
+
+        if (ImGui.Button("Add Child"))
+        {
+            ImGui.OpenPopup("Add Child");
+        }
+
+        ImGui.SeparatorText("Children");
+        ImGui.Indent();
+
+        int i = 0;
+        foreach (var child in node.Children)
+        {
+            ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
+
+            DisplayConditionNode(child, node, i);
+            i++;
+
+            ImGui.EndChild();
+        }
+
+        ImGui.Unindent();
+        ImGui.PopID();
+    }
+
+    private static void DisplayVariableInfo(ref AIConditionTreeVariableNode.VariableInfo variable)
+    {
+        var propertyName = variable.PropertyName;
+        var ownerName = variable.OwnerName;
+
+        ImGui.PushID(MemoryUtil.AddressOf(ref variable));
+
+        if (ImGui.InputText("Property Name", ref propertyName, 260))
+        {
+            variable.PropertyName = propertyName;
+        }
+
+        if (ImGui.InputText("Owner Name", ref ownerName, 260))
+        {
+            variable.OwnerName = ownerName;
+        }
+
+        ImGui.Checkbox("Is Singleton Owner", ref variable.IsSingletonOwner);
+
+        ImGui.PopID();
+    }
+
+    private static void DisplayEnumProp(ref EnumProp prop)
+    {
+        ImGui.PushID(MemoryUtil.AddressOf(ref prop));
+
+        var name = prop.Name;
+        var enumName = prop.EnumName;
+
+        ImGui.InputInt("Value", ref prop.Value);
+
+        if (ImGui.InputText("Name", ref name, 260))
+            prop.Name = name;
+
+        if (ImGui.InputText("Enum Name", ref enumName, 260))
+            prop.EnumName = enumName;
+
+        ImGuiExtensions.InputScalar("Name Hash", ref prop.NameCrc, format: "%X");
+        ImGui.SameLine();
+        if (ImGui.Button("Auto-Fill##nameHash"))
+            prop.NameCrc = Utility.Crc32(name);
+
+        ImGuiExtensions.InputScalar("Enum Name Hash", ref prop.EnumNameCrc, format: "%X");
+        ImGui.SameLine();
+        if (ImGui.Button("Auto-Fill##enumNameHash"))
+            prop.EnumNameCrc = Utility.Crc32(enumName);
+
+        ImGui.PopID();
     }
 
     private XFsmWeaponNode CreateNewWeaponFsmNode(string name, bool action, Vector2 position, XFsmPin? originPin = null) 
