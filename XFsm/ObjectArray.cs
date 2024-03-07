@@ -16,15 +16,20 @@ public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> whe
         set => Pointer[index] = value.Instance;
     }
 
-    public void Reverse(int index, int count)
+    public void Reverse(int index, int count_)
     {
-        var end = index + count - 1;
+        var end = index + count_ - 1;
         while (index < end)
         {
             var temp = Pointer[index];
             Pointer[index++] = Pointer[end];
             Pointer[end--] = temp;
         }
+    }
+
+    public void Swap(int index1, int index2)
+    {
+        (Pointer[index1], Pointer[index2]) = (Pointer[index2], Pointer[index1]);
     }
 
     public IEnumerator<T> GetEnumerator() =>new Enumerator(Pointer, Count);
