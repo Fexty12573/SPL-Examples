@@ -18,6 +18,7 @@ public partial class Plugin : IPlugin
     private XFsmEditor _editor = null!;
     private MtDti _fsmDti = null!;
     private string _fsmPath = "";
+    private string _lastOpenedPath = "";
 
     public void OnLoad()
     {
@@ -46,10 +47,13 @@ public partial class Plugin : IPlugin
             {
                 if (dlg.ShowDialog() == true)
                 {
-                    var file = TryLoadFsm(dlg.FileName);
+                    var file = TryLoadFsm(dlg.FileName, out var isNativePc);
                     if (file is not null)
                     {
                         _editor.SetFsm(file);
+                        _lastOpenedPath = isNativePc 
+                            ? $@".\nativePC\{GetGameCompatiblePath(dlg.FileName)}{Path.GetExtension(dlg.FileName)}" 
+                            : dlg.FileName;
                     }
                     else
                     {
@@ -75,6 +79,7 @@ public partial class Plugin : IPlugin
             if (fsm is not null)
             {
                 _editor.SetFsm(fsm);
+                _lastOpenedPath = $@".\nativePC\{_fsmPath}.fsm";
             }
             else
             {
@@ -92,6 +97,60 @@ public partial class Plugin : IPlugin
             ImGui.EndTooltip();
         }
 
+        if (_editor.HasFsm)
+        {
+            ImGui.SameLine();
+
+            if (ImGui.Button("Save"))
+            {
+                _editor.ApplyEditorToObject();
+
+                using var fs = MtFileStream.FromPath(_lastOpenedPath, OpenMode.Write);
+                Ensure.NotNull(fs);
+
+                var serializer = new MtSerializer();
+
+                if (Path.GetExtension(_lastOpenedPath) == ".fsm")
+                {
+                    serializer.SerializeBinary(fs, _editor.Fsm!, 0xE05);
+                }
+                else if (Path.GetExtension(_lastOpenedPath) == ".xml")
+                {
+                    serializer.SerializeXml(fs, _editor.Fsm!, _editor.Fsm!.OwnerObjectName);
+                }
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Save As..."))
+            {
+                _editor.ApplyEditorToObject();
+
+                var dlg = new SaveFileDialog
+                {
+                    DefaultExt = ".fsm",
+                    Filter = "FSM Files|*.fsm;*.xml",
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    using var fs = MtFileStream.FromPath(dlg.FileName, OpenMode.Write);
+                    Ensure.NotNull(fs);
+
+                    var serializer = new MtSerializer();
+
+                    if (Path.GetExtension(dlg.FileName) == ".fsm")
+                    {
+                        serializer.SerializeBinary(fs, _editor.Fsm!, 0xE05);
+                    }
+                    else if (Path.GetExtension(dlg.FileName) == ".xml")
+                    {
+                        serializer.SerializeXml(fs, _editor.Fsm!, _editor.Fsm!.OwnerObjectName);
+                    }
+                }
+            }
+        }
+
         ImGui.SameLine();
 
         if (ImGui.Button("Fix..."))
@@ -104,7 +163,7 @@ public partial class Plugin : IPlugin
 
             if (dlg.ShowDialog() == true)
             {
-                var file = TryLoadFsm(dlg.FileName);
+                var file = TryLoadFsm(dlg.FileName, out _);
                 if (file is not null)
                 {
                     var saveDlg = new SaveFileDialog
@@ -120,8 +179,7 @@ public partial class Plugin : IPlugin
                         var serializer = new MtSerializer();
                         //serializer.SerializeBinary(fs, file, 0xE05);
 
-                        var serializeBinary =
-                            new NativeFunction<nint, nint, ushort, nint, SerializerMode, nint, bool>(0x14219c0c0);
+                        var serializeBinary = new NativeFunction<nint, nint, ushort, nint, SerializerMode, nint, bool>(0x14219c0c0);
                         unsafe
                         {
                             var serializerPtr = &serializer;
@@ -154,7 +212,7 @@ public partial class Plugin : IPlugin
         ImGui.End();
     }
 
-    private AIFSM? TryLoadFsm(string path)
+    private AIFSM? TryLoadFsm(string path, out bool isNativePc)
     {
         var existing = ResourceManager.GetResource<AIFSM>(
             GetGameCompatiblePath(path),
@@ -163,7 +221,12 @@ public partial class Plugin : IPlugin
         );
 
         if (existing is not null)
+        {
+            isNativePc = true;
             return existing;
+        }
+
+        isNativePc = false;
 
         using var fs = MtFileStream.FromPath(path, OpenMode.Read);
         Ensure.NotNull(fs);

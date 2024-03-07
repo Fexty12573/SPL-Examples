@@ -19,7 +19,11 @@ public class AIConditionTreeInfo : MtObject
     public AIConditionTreeNode? RootNode
     {
         get => GetObject<AIConditionTreeNode>(0x20);
-        set => Set(0x20, value?.Instance ?? 0);
+        set
+        {
+            RootNode?.Destroy(true);
+            Set(0x20, value?.Instance ?? 0);
+        }
     }
 }
 
@@ -59,7 +63,7 @@ public class AIConditionTreeNode : MtObject
     }
     public AIConditionTreeNode() { _capacity = 0; }
 
-    public ConditionTreeNodeType Type { get; }
+    public ConditionTreeNodeType Type { get; init; }
     private int _capacity;
 
     public ref int ChildCount => ref GetRef<int>(0x8);

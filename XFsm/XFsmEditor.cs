@@ -20,7 +20,6 @@ using FA6 = FontAwesome6;
 
 public class XFsmEditor
 {
-    private AIFSM? _fsm;
     private bool _isWeaponFsm;
     private nint _ctx;
     private readonly BingTranslator _translator = new();
@@ -159,7 +158,7 @@ public class XFsmEditor
             return;
         }
 
-        _fsm = fsm;
+        Fsm = fsm;
 
         _nodes.Clear();
         _links.Clear();
@@ -217,9 +216,28 @@ public class XFsmEditor
 #endif
     }
 
+    public void ApplyEditorToObject()
+    {
+        if (Fsm?.RootCluster is null)
+            return;
+
+        foreach (var node in _nodes)
+        {
+            foreach (var pin in node.OutputPins)
+            {
+                var link = GetLinkFrom(pin);
+                pin.BackingLink.DestinationNodeId = link?.Target.Parent.BackingNode.Id ?? 0;
+            }
+        }
+    }
+
+    public bool HasFsm => Fsm is not null;
+
+    public AIFSM? Fsm { get; private set; }
+
     private async Task TranslateNames()
     {
-        if (_fsm is null)
+        if (Fsm is null)
             return;
 
         _translatedNodeNames.Clear();
@@ -283,7 +301,7 @@ public class XFsmEditor
             _firstRender = false;
         }
 
-        if (_fsm is null)
+        if (Fsm is null)
         {
             ImGui.TextColored(new Vector4(1, .33f, .33f, 1), $"{FA6.Xmark} No FSM loaded");
             return;
@@ -433,6 +451,8 @@ public class XFsmEditor
                                 source, target,
                                 source.BackingLink
                             ));
+
+                            source.BackingLink.DestinationNodeId = target.Parent.BackingNode.Id;
                         }
                     }
                 }
@@ -465,7 +485,7 @@ public class XFsmEditor
                     var node = GetNodeById(nodeId);
                     if (node is not null)
                     {
-                        _fsm!.RootCluster!.RemoveNode(node.BackingNode);
+                        Fsm!.RootCluster!.RemoveNode(node.BackingNode);
                         _nodes.Remove(node);
                     }
                 }
@@ -569,20 +589,32 @@ public class XFsmEditor
                     colorsPushed = true;
                 }
 
-                if (ImGui.SmallButton(FA6.ArrowUp))
+                var framePadding = style.FramePadding.Y;
+                style.FramePadding.Y = 6f;
+
+                if (ImGui.SmallButton(FA6.ArrowUp) && !colorsPushed)
                 {
                     output.Parent.OutputPins.Reverse(pinIndex - 1, 2);
                     output.Parent.BackingNode.Links.Reverse(pinIndex - 1, 2);
                 }
 
-                if (colorsPushed && pinIndex < output.Parent.OutputPins.Count - 1)
+                if (colorsPushed)
                 {
                     ImGui.PopStyleColor(3);
                     colorsPushed = false;
                 }
 
+                if (pinIndex >= output.Parent.OutputPins.Count - 1)
+                {
+                    // Pin can't be moved down, so disable the button
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    colorsPushed = true;
+                }
+
                 ImGui.SameLine();
-                if (ImGui.SmallButton(FA6.ArrowDown))
+                if (ImGui.SmallButton(FA6.ArrowDown) && !colorsPushed)
                 {
                     output.Parent.OutputPins.Reverse(pinIndex, 2);
                     output.Parent.BackingNode.Links.Reverse(pinIndex, 2);
@@ -590,6 +622,8 @@ public class XFsmEditor
 
                 if (colorsPushed)
                     ImGui.PopStyleColor(3);
+
+                style.FramePadding.Y = framePadding;
 
                 if (linkIndex != -1)
                 {
@@ -603,7 +637,10 @@ public class XFsmEditor
                     }
                     else
                     {
-                        node.OutputPins.Insert(linkIndex, new XFsmOutputPin(node, link, linkIndex));
+                        // Need to pass node.OutputPins.Count as the index otherwise there will be
+                        // duplicate pins with the same ID
+                        node.OutputPins.Insert(linkIndex, new XFsmOutputPin(node, link, node.OutputPins.Count));
+                        node.BackingNode.Links.Swap(linkIndex, node.BackingNode.Links.Count - 1);
                     }
 
                     ImGui.CloseCurrentPopup();
@@ -1152,7 +1189,7 @@ public class XFsmEditor
                 if (node is not null)
                 {
                     node.Variable.PropertyName = "";
-                    node.Variable.OwnerName = _fsm?.OwnerObjectName ?? "";
+                    node.Variable.OwnerName = Fsm?.OwnerObjectName ?? "";
                 }
                 ImGui.CloseCurrentPopup();
             }
@@ -1367,7 +1404,7 @@ public class XFsmEditor
         ImGui.SeparatorText("Children");
         ImGui.Indent();
 
-        int i = 0;
+        var i = 0;
         foreach (var child in node.Children)
         {
             ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
@@ -1429,7 +1466,7 @@ public class XFsmEditor
 
     private XFsmWeaponNode CreateNewWeaponFsmNode(string name, bool action, Vector2 position, XFsmPin? originPin = null) 
     {
-        var node = _fsm!.RootCluster!.AddNode(name);
+        var node = Fsm!.RootCluster!.AddNode(name);
         node.Id = GetNextFreeNodeId();
         var process = node.AddProcess(action ? _actionContainerName : _motionContainerName);
 
@@ -1510,6 +1547,11 @@ public class XFsmEditor
         }
 
         return null;
+    }
+
+    private XFsmLink? GetLinkFrom(XFsmOutputPin pin)
+    {
+        return _links.Find(l => l.Source == pin);
     }
 
     private XFsmConditionTreeInfo? GetConditionById(int id)
@@ -1736,7 +1778,7 @@ public class XFsmWeaponNode : XFsmNode
 
 public class XFsmPin(string name, int id)
 {
-    public int Id { get; } = id;
+    public int Id { get; set; } = id;
     public string Name { get; set; } = name;
 }
 
