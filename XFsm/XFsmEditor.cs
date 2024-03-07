@@ -52,6 +52,8 @@ public class XFsmEditor
     private float _l = 500f;
     private float _sF = 0.001f;
 
+    private bool _firstRender = true;
+
     private readonly Dictionary<nint, string> _translatedNodeNames = [];
     private readonly Dictionary<nint, string> _translatedLinkNames = [];
 
@@ -100,7 +102,6 @@ public class XFsmEditor
     {
         if (_ctx == 0)
         {
-            NodeEditor.SetCurrentImGuiContext(ImGui.GetCurrentContext());
             _ctx = NodeEditor.CreateEditor();
             
             NodeEditor.SetCurrentEditor(_ctx);
@@ -276,12 +277,18 @@ public class XFsmEditor
 
     public void Render()
     {
+        if (_firstRender)
+        {
+            NodeEditor.SetCurrentImGuiContext(ImGui.GetCurrentContext());
+            _firstRender = false;
+        }
+
         if (_fsm is null)
         {
             ImGui.TextColored(new Vector4(1, .33f, .33f, 1), $"{FA6.Xmark} No FSM loaded");
             return;
         }
-        
+
         NodeEditor.SetCurrentEditor(_ctx);
 
         if (ImGui.Button("Show Style Editor"))
@@ -365,15 +372,11 @@ public class XFsmEditor
             ShowStyleEditor();
         }
 
-        ImGui.BeginChild("##sidebar", new Vector2(), ImGuiChildFlags.Border | ImGuiChildFlags.ResizeX);
+        ImGui.Begin("Nodes##left");
         {
             ShowLeftSidePanel();
         }
-        ImGui.EndChild();
-
-        ImGui.SameLine();
-
-        ImGui.BeginChild("##center");
+        ImGui.End();
 
         NodeEditor.Begin("XFSM Editor");
 
@@ -637,25 +640,21 @@ public class XFsmEditor
             ImGui.EndPopup();
         }
         NodeEditor.Resume();
-
         NodeEditor.End();
-        NodeEditor.SetCurrentEditor(0);
 
-        ImGui.EndChild();
-
-        ImGui.SameLine();
-
-        ImGui.BeginChild("##right", new Vector2(), ImGuiChildFlags.ResizeX);
+        ImGui.Begin("Links##right");
         {
             ShowRightSidePanel();
         }
-        ImGui.EndChild();
+        ImGui.End();
 
-        ImGui.BeginChild("##bottom", new Vector2(), ImGuiChildFlags.ResizeY);
+        ImGui.Begin("ConditionTree##bottom");
         {
             ShowConditionTree();
         }
-        ImGui.EndChild();
+        ImGui.End();
+
+        NodeEditor.SetCurrentEditor(0);
 
         return;
 
@@ -923,7 +922,7 @@ public class XFsmEditor
 
         if (ImGui.CollapsingHeader("Filters"))
         {
-            ImGui.PushID("filters");
+            using var _ = new ScopedId("filters");
             if (_isWeaponFsm)
             {
                 ImGui.Checkbox("Highlight Matching Nodes", ref _highlightMatchingNodes);
@@ -965,7 +964,6 @@ public class XFsmEditor
                 if (ImGui.InputInt("Source Node Id##flow", ref _flowSourceNodeId))
                     _flowSourceNode = GetNodeById(_flowSourceNodeId, true);
             }
-            ImGui.PopID();
         }
     }
 
@@ -1089,7 +1087,12 @@ public class XFsmEditor
         }
 
         ImGui.Text($"Condition Id: {condition.Id}");
-        ImGui.Text($"Condition Name: {condition.BackingInfo.Name.Name}");
+
+        var conditionName = condition.BackingInfo.Name.Name;
+        if (ImGui.InputText("Condition Name", ref conditionName, 1024))
+        {
+            condition.BackingInfo.Name.Name = conditionName;
+        }
 
         DisplayConditionNode(condition.RootNode, condition);
 
@@ -1156,10 +1159,6 @@ public class XFsmEditor
 
             ImGui.EndPopup();
         }
-
-        return;
-
-        
     }
 
     private void ShowConditionTree()
@@ -1264,7 +1263,7 @@ public class XFsmEditor
         if (node is null)
             return;
 
-        ImGui.PushID(node.Instance);
+        using var _ = new ScopedId(node.Instance);
 
         var typeChanged = false;
         if (ImGui.BeginCombo($"##conditionNode{node.Instance}", $"{node.Type}##conditionNode{node.Instance}"))
@@ -1283,7 +1282,7 @@ public class XFsmEditor
                     }
                     else if (parent is AIConditionTreeNode p)
                     {
-                        p?.SetChild(index, type);
+                        p.SetChild(index, type);
                     }
 
                     typeChanged = true;
@@ -1300,8 +1299,6 @@ public class XFsmEditor
 
         if (typeChanged)
         {
-            ImGui.PopID();
-
             // The call to SetChild destroyed the current node
             // so we need to return here to avoid using the destroyed node
             return;
@@ -1382,7 +1379,6 @@ public class XFsmEditor
         }
 
         ImGui.Unindent();
-        ImGui.PopID();
     }
 
     private static void DisplayVariableInfo(ref AIConditionTreeVariableNode.VariableInfo variable)
@@ -1390,7 +1386,7 @@ public class XFsmEditor
         var propertyName = variable.PropertyName;
         var ownerName = variable.OwnerName;
 
-        ImGui.PushID(MemoryUtil.AddressOf(ref variable));
+        using var _ = new ScopedId(MemoryUtil.AddressOf(ref variable));
 
         if (ImGui.InputText("Property Name", ref propertyName, 260))
         {
@@ -1403,13 +1399,11 @@ public class XFsmEditor
         }
 
         ImGui.Checkbox("Is Singleton Owner", ref variable.IsSingletonOwner);
-
-        ImGui.PopID();
     }
 
     private static void DisplayEnumProp(ref EnumProp prop)
     {
-        ImGui.PushID(MemoryUtil.AddressOf(ref prop));
+        using var _ = new ScopedId(MemoryUtil.AddressOf(ref prop));
 
         var name = prop.Name;
         var enumName = prop.EnumName;
@@ -1431,8 +1425,6 @@ public class XFsmEditor
         ImGui.SameLine();
         if (ImGui.Button("Auto-Fill##enumNameHash"))
             prop.EnumNameCrc = Utility.Crc32(enumName);
-
-        ImGui.PopID();
     }
 
     private XFsmWeaponNode CreateNewWeaponFsmNode(string name, bool action, Vector2 position, XFsmPin? originPin = null) 

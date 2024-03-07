@@ -31,7 +31,7 @@ void render_doc_trigger_capture() {
 }
 
 SPL_INTERNAL_CALL int get_internal_call_count() {
-    return 120;
+    return 134;
 }
 
 SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
@@ -160,6 +160,20 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "GetNodeCount", ax::NodeEditor::GetNodeCount };
     *icalls++ = { "GetOrderedNodeIds", ax::NodeEditor::GetOrderedNodeIds };
     *icalls++ = { "Icon", ax::Widgets::Icon };
+    *icalls++ = { "DockBuilderDockWindow", ImGui::DockBuilderDockWindow };
+    *icalls++ = { "DockBuilderGetNode", ImGui::DockBuilderGetNode };
+    *icalls++ = { "DockBuilderGetCentralNode", ImGui::DockBuilderGetCentralNode };
+    *icalls++ = { "DockBuilderAddNode", ImGui::DockBuilderAddNode };
+    *icalls++ = { "DockBuilderRemoveNode", ImGui::DockBuilderRemoveNode };
+    *icalls++ = { "DockBuilderRemoveNodeDockedWindows", ImGui::DockBuilderRemoveNodeDockedWindows };
+    *icalls++ = { "DockBuilderRemoveNodeChildNodes", ImGui::DockBuilderRemoveNodeChildNodes };
+    *icalls++ = { "DockBuilderSetNodePos", ImGui::DockBuilderSetNodePos };
+    *icalls++ = { "DockBuilderSetNodeSize", ImGui::DockBuilderSetNodeSize };
+    *icalls++ = { "DockBuilderSplitNode", ImGui::DockBuilderSplitNode };
+    *icalls++ = { "DockBuilderCopyDockSpace", ImGui::DockBuilderCopyDockSpace };
+    *icalls++ = { "DockBuilderCopyNode", ImGui::DockBuilderCopyNode };
+    *icalls++ = { "DockBuilderCopyWindowSettings", ImGui::DockBuilderCopyWindowSettings };
+    *icalls++ = { "DockBuilderFinish", ImGui::DockBuilderFinish };
 }
 
 

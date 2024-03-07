@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Numerics;
 using System.Text;
 using SharpPluginLoader.Core;
 using ImGuiNET;
@@ -30,7 +31,7 @@ public partial class Plugin : IPlugin
         if (!Renderer.MenuShown)
             return;
         
-        if (!ImGui.Begin("XFsm"))
+        if (!ImGui.Begin("XFsm", ImGuiWindowFlags.DockNodeHost))
             goto Exit;
 
         if (ImGui.Button("Open.."))

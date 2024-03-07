@@ -455,6 +455,48 @@ public static unsafe partial class InternalCalls
         Icon(size, type, filled, new Vector4(1, 1, 1, 1));
     }
 
+    [InternalCall]
+    public static partial void DockBuilderDockWindow(string name, uint id);
+
+    [InternalCall]
+    public static partial nint DockBuilderGetNode(uint id);
+
+    [InternalCall]
+    public static partial nint DockBuilderGetCentralNode(uint id);
+
+    [InternalCall]
+    public static partial uint DockBuilderAddNode(uint id = 0, ImGuiDockNodeFlags flags = ImGuiDockNodeFlags.None);
+
+    [InternalCall]
+    public static partial void DockBuilderRemoveNode(uint id);
+
+    [InternalCall]
+    public static partial void DockBuilderRemoveNodeDockedWindows(uint id, bool clearSettingsRefs = true);
+
+    [InternalCall]
+    public static partial void DockBuilderRemoveNodeChildNodes(uint id);
+
+    [InternalCall]
+    public static partial void DockBuilderSetNodePos(uint id, Vector2 pos);
+
+    [InternalCall]
+    public static partial void DockBuilderSetNodeSize(uint id, Vector2 size);
+
+    [InternalCall]
+    public static partial uint DockBuilderSplitNode(uint id, ImGuiDir splitDir, float sizeRatioForNodeAtDir, out uint outIdAtDir, out uint outIdAtOppositeDir);
+
+    [InternalCall]
+    public static partial void DockBuilderCopyDockSpace(uint srcNodeId, uint dstNodeId, in ImVector inWindowRemapPairs);
+
+    [InternalCall]
+    public static partial void DockBuilderCopyNode(uint srcNodeId, uint dstNodeId, in ImVector inWindowRemapPairs);
+
+    [InternalCall]
+    public static partial void DockBuilderCopyWindowSettings(string srcName, string dstName);
+
+    [InternalCall]
+    public static partial void DockBuilderFinish(uint id);
+
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);
 

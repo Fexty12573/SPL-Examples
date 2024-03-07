@@ -319,7 +319,15 @@ public unsafe struct AIDEnum
     public MtString* NamePtr;
     public int Id;
 
-    public string Name => NamePtr->GetString();
+    public string Name
+    {
+        get => NamePtr != null ? NamePtr->GetString() : "N/A";
+        set
+        {
+            fixed (MtString** ptr = &NamePtr)
+                InternalCalls.MtStringAssign((nint)ptr, value);
+        }
+    }
 }
 
 public enum OperatorType : int
