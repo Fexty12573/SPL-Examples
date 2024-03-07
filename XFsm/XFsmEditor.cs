@@ -11,6 +11,7 @@ using SharpPluginLoader.Core.Memory;
 using Microsoft.CodeAnalysis;
 using SharpPluginLoader.Core.MtTypes;
 using SharpPluginLoader.Core.Rendering;
+using System.Reflection;
 
 namespace XFsm;
 
@@ -53,6 +54,8 @@ public class XFsmEditor
 
     private readonly Dictionary<nint, string> _translatedNodeNames = [];
     private readonly Dictionary<nint, string> _translatedLinkNames = [];
+
+    private static readonly string[] OperatorTypeNames = Enum.GetNames<OperatorType>();
 
     #region Allocators
 
@@ -195,9 +198,9 @@ public class XFsmEditor
         }
 
         
-        foreach (var treeInfo in fsm.ConditionTree.TreeList)
+        foreach (var (treeInfo, i) in fsm.ConditionTree.TreeList.Select((t, i) => (t, i)))
         {
-            _treeInfoMap.TryAdd(treeInfo.Name.Id, new XFsmConditionTreeInfo(treeInfo));
+            _treeInfoMap.TryAdd(treeInfo.Name.Id, new XFsmConditionTreeInfo(treeInfo, i));
         }
 
         ImGuiExtensions.NotificationSuccess($"""
@@ -1045,19 +1048,262 @@ public class XFsmEditor
         ImGui.Text($"Target: {link.Target.Parent.Name}");
 
         var fsmLink = link.Source.BackingLink;
-        if (fsmLink.HasCondition)
+        if (!fsmLink.HasCondition)
+            return;
+
+        ImGui.Text("Has Condition");
+        var condition = GetConditionById(fsmLink.ConditionId);
+        if (condition is null)
         {
-            ImGui.Text("Has Condition");
-            var condition = GetConditionById(fsmLink.ConditionId);
-            if (condition is not null)
+            ImGui.TextColored(new Vector4(1, .3f, .3f, 1), "Condition not found");
+            return;
+        }
+
+        ImGui.Text($"Condition Id: {condition.Id}");
+        ImGui.Text($"Condition Name: {condition.BackingInfo.Name.Name}");
+
+        DisplayConditionNode(condition.RootNode);
+
+        if (ImGui.BeginPopup("Add Child"))
+        {
+            if (ImGui.MenuItem("ConstEnumNode"))
             {
-                ImGui.Text($"Condition Id: {condition.Id}");
-                ImGui.Text($"Condition Name: {condition.Name}");
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstEnumNode);
+                ImGui.CloseCurrentPopup();
             }
-            else
+
+            if (ImGui.MenuItem("ConstF32Node"))
             {
-                ImGui.Text("Condition not found");
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstF32Node);
+                ImGui.CloseCurrentPopup();
             }
+
+            if (ImGui.MenuItem("ConstF64Node"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstF64Node);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("ConstS32Node"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstS32Node);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("ConstS64Node"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstS64Node);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("ConstStringNode"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.ConstStringNode);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("OperationNode"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.OperationNode);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("StateNode"))
+            {
+                condition.RootNode?.AddChild(ConditionTreeNodeType.StateNode);
+                ImGui.CloseCurrentPopup();
+            }
+
+            if (ImGui.MenuItem("VariableNode"))
+            {
+                var node = condition.RootNode?.AddChild(ConditionTreeNodeType.VariableNode).As<AIConditionTreeVariableNode>();
+                if (node is not null)
+                {
+                    node.Variable.PropertyName = "";
+                    node.Variable.OwnerName = _fsm?.OwnerObjectName ?? "";
+                }
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.EndPopup();
+        }
+
+        return;
+
+        void DisplayConditionNode(AIConditionTreeNode? node, AIConditionTreeNode? parent = null, int index = 0)
+        {
+            if (node is null)
+                return;
+
+            ImGui.PushID(node.Instance);
+
+            var typeChanged = false;
+            if (ImGui.BeginCombo($"##conditionNode{node.Instance}", $"{node.Type}##conditionNode{node.Instance}"))
+            {
+                foreach (var type in Enum.GetValues<ConditionTreeNodeType>())
+                {
+                    var isSelected = node.Type == type;
+                    if (ImGui.Selectable(type.ToString(), isSelected))
+                    {
+                        if (parent is null)
+                        {
+                            var root = AIConditionTreeNode.Create(type);
+                            condition.RootNode?.Destroy(true);
+                            condition.RootNode = root;
+                            condition.BackingInfo.RootNode = root;
+                        }
+                        else
+                        {
+                            parent?.SetChild(index, type);
+                        }
+                        
+                        typeChanged = true;
+                    }
+
+                    if (isSelected)
+                    {
+                        ImGui.SetItemDefaultFocus();
+                    }
+                }
+
+                ImGui.EndCombo();
+            }
+
+            if (typeChanged)
+            {
+                ImGui.PopID();
+
+                // The call to SetChild destroyed the current node
+                // so we need to return here to avoid using the destroyed node
+                return;
+            }
+
+            switch (node.Type)
+            {
+                case ConditionTreeNodeType.ConstEnumNode:
+                    ImGui.InputInt("Enum Value", ref node.Value<int>(0x8));
+                    break;
+                case ConditionTreeNodeType.ConstF32Node:
+                    ImGui.DragFloat("F32 Value", ref node.Value<float>());
+                    break;
+                case ConditionTreeNodeType.ConstF64Node:
+                    ImGui.DragScalar("F64 Value", ImGuiDataType.Double, MemoryUtil.AddressOf(ref node.Value<double>()));
+                    break;
+                case ConditionTreeNodeType.ConstS32Node:
+                    ImGui.InputInt("S32 Value", ref node.Value<int>());
+                    break;
+                case ConditionTreeNodeType.ConstS64Node:
+                    ImGuiExtensions.InputScalar("S64 Value", ref node.Value<long>());
+                    break;
+                case ConditionTreeNodeType.ConstStringNode:
+                {
+                    var strNode = node.As<AIConditionTreeConstStringNode>();
+                    var str = strNode.Value;
+                    if (ImGui.InputText("String Value", ref str, 1024))
+                    {
+                        strNode.Value = str;
+                    }
+                    break;
+                }
+                case ConditionTreeNodeType.OperationNode:
+                    ImGui.Combo("Operator", ref node.Value<int>(), OperatorTypeNames, OperatorTypeNames.Length);
+                    break;
+                case ConditionTreeNodeType.StateNode:
+                    ImGui.InputInt("State Id", ref node.Value<int>());
+                    break;
+                case ConditionTreeNodeType.VariableNode:
+                {
+                    var varNode = node.As<AIConditionTreeVariableNode>();
+                    ImGui.SeparatorText("Variable");
+                    DisplayVariableInfo(ref varNode.Variable);
+                    ImGui.SeparatorText("Index Variable");
+                    DisplayVariableInfo(ref varNode.IndexVariable);
+                    ImGui.Separator();
+                    ImGui.Checkbox("Is BitNo", ref varNode.IsBitNo);
+                    ImGui.Checkbox("Is Array", ref varNode.IsArray);
+                    ImGui.Checkbox("Is Dynamic Index", ref varNode.IsDynamicIndex);
+                    ImGui.InputInt("Index", ref varNode.Index);
+                    ImGui.Checkbox("Use Index Enum", ref varNode.UseIndexEnum);
+                    if (varNode.UseIndexEnum)
+                    {
+                        ImGui.SeparatorText("Index Enum");
+                        DisplayEnumProp(ref varNode.IndexEnum);
+                    }
+                    break;
+                }
+            }
+
+            if (ImGui.Button("Add Child"))
+            {
+                ImGui.OpenPopup("Add Child");
+            }
+
+            ImGui.SeparatorText("Children");
+            ImGui.Indent();
+
+            int i = 0;
+            foreach (var child in node.Children)
+            {
+                ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
+                
+                DisplayConditionNode(child, node, i);
+                i++;
+
+                ImGui.EndChild();
+            }
+
+            ImGui.Unindent();
+            ImGui.PopID();
+        }
+
+        static void DisplayVariableInfo(ref AIConditionTreeVariableNode.VariableInfo variable)
+        {
+            var propertyName = variable.PropertyName;
+            var ownerName = variable.OwnerName;
+
+            ImGui.PushID(MemoryUtil.AddressOf(ref variable));
+
+            if (ImGui.InputText("Property Name", ref propertyName, 260))
+            {
+                variable.PropertyName = propertyName;
+            }
+
+            if (ImGui.InputText("Owner Name", ref ownerName, 260))
+            {
+                variable.OwnerName = ownerName;
+            }
+
+            ImGui.Checkbox("Is Singleton Owner", ref variable.IsSingletonOwner);
+
+            ImGui.PopID();
+        }
+
+        static void DisplayEnumProp(ref EnumProp prop)
+        {
+            ImGui.PushID(MemoryUtil.AddressOf(ref prop));
+
+            var name = prop.Name;
+            var enumName = prop.EnumName;
+
+            ImGui.InputInt("Value", ref prop.Value);
+
+            if (ImGui.InputText("Name", ref name, 260))
+                prop.Name = name;
+
+            if (ImGui.InputText("Enum Name", ref enumName, 260))
+                prop.EnumName = enumName;
+
+            ImGuiExtensions.InputScalar("Name Hash", ref prop.NameCrc, format: "%X");
+            ImGui.SameLine();
+            if (ImGui.Button("Auto-Fill##nameHash"))
+                prop.NameCrc = Utility.Crc32(name);
+
+            ImGuiExtensions.InputScalar("Enum Name Hash", ref prop.EnumNameCrc, format: "%X");
+            ImGui.SameLine();
+            if (ImGui.Button("Auto-Fill##enumNameHash"))
+                prop.EnumNameCrc = Utility.Crc32(enumName);
+
+            ImGui.PopID();
         }
     }
 
@@ -1190,6 +1436,12 @@ public class XFsmEditor
         return fsmNode;
     }
 
+    private static bool IsSingleConditionNode(XFsmConditionTreeInfo condition)
+    {
+        return condition.Type == ConditionTreeNodeType.OperationNode
+            && condition.RootNode?.Value<OperatorType>() == OperatorType.None;
+    }
+
     private XFsmNode? GetNodeById(nint id, bool useRealId = false)
     {
         return useRealId
@@ -1225,7 +1477,7 @@ public class XFsmEditor
         return null;
     }
 
-    private AIConditionTreeInfo? GetConditionById(int id)
+    private XFsmConditionTreeInfo? GetConditionById(int id)
     {
         return _treeInfoMap.GetValueOrDefault(id);
     }
@@ -1474,64 +1726,13 @@ public class XFsmLink(XFsmOutputPin source, XFsmInputPin target, AIFSMLink link)
     public AIFSMLink BackingLink { get; } = link;
 }
 
-public class XFsmConditionTreeInfo(AIConditionTreeInfo info)
+public class XFsmConditionTreeInfo(AIConditionTreeInfo info, int treeIndex)
 {
     public int Id => BackingInfo.Name.Id;
     public AIConditionTreeInfo BackingInfo { get; } = info;
-    public AIConditionTreeNode? RootNode { get; } = info.RootNode;
-}
-
-public class XFsmConditionTreeNode(AIConditionTreeNode node, ConditionTreeNodeType type)
-{
-    public AIConditionTreeNode BackingNode { get; } = node;
-    public ConditionTreeNodeType NodeType { get; } = type;
-
-    protected static ConditionTreeNodeType GetNodeType(AIConditionTreeNode node)
-    {
-        return node.GetDti()?.Name switch
-        {
-            "rAIConditionTree::ConstEnumNode" => ConditionTreeNodeType.ConstEnumNode,
-            "rAIConditionTree::ConstF32Node" => ConditionTreeNodeType.ConstF32Node,
-            "rAIConditionTree::ConstF64Node" => ConditionTreeNodeType.ConstF64Node,
-            "rAIConditionTree::ConstS32Node" => ConditionTreeNodeType.ConstS32Node,
-            "rAIConditionTree::ConstS64Node" => ConditionTreeNodeType.ConstS64Node,
-            "rAIConditionTree::ConstStringNode" => ConditionTreeNodeType.ConstStringNode,
-            "rAIConditionTree::OperationNode" => ConditionTreeNodeType.OperationNode,
-            "rAIConditionTree::StateNode" => ConditionTreeNodeType.StateNode,
-            "rAIConditionTree::VariableNode" => ConditionTreeNodeType.VariableNode,
-            _ => throw new ArgumentOutOfRangeException(nameof(node), node, null)
-        };
-    }
-}
-
-public class XFsmConditionTreeOperationNode : XFsmConditionTreeNode
-{
-    public new AIConditionTreeOperationNode BackingNode { get; }
-    public ref OperatorType Operator => ref BackingNode.Operator;
-    public IList<XFsmConditionTreeNode> Children { get; }
-
-    public XFsmConditionTreeOperationNode(AIConditionTreeOperationNode node)
-        : base(node, ConditionTreeNodeType.OperationNode)
-    {
-        BackingNode = node;
-
-        var opNode = node.As<AIConditionTreeOperationNode>();
-        Operation = opNode.Operator;
-        Children = opNode.Children.Select(n => new XFsmConditionTreeNode(n, GetNodeType(n))).ToList();
-    }
-}
-
-public enum ConditionTreeNodeType
-{
-    ConstEnumNode,
-    ConstF32Node,
-    ConstF64Node,
-    ConstS32Node,
-    ConstS64Node,
-    ConstStringNode,
-    OperationNode,
-    StateNode,
-    VariableNode,
+    public AIConditionTreeNode? RootNode { get; set; } = info.RootNode;
+    public ConditionTreeNodeType Type { get; } = info.RootNode?.Type ?? ConditionTreeNodeType.None;
+    public int TreeIndex { get; } = treeIndex;
 }
 
 public enum WeaponFsmNodeType
