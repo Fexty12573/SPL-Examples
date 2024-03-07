@@ -44,15 +44,15 @@ public class AIConditionTreeNode : MtObject
     {
         Type = GetDti()?.Name switch
         {
-            "AIConditionTreeConstEnumNode" => ConditionTreeNodeType.ConstEnumNode,
-            "AIConditionTreeConstF32Node" => ConditionTreeNodeType.ConstF32Node,
-            "AIConditionTreeConstF64Node" => ConditionTreeNodeType.ConstF64Node,
-            "AIConditionTreeConstS32Node" => ConditionTreeNodeType.ConstS32Node,
-            "AIConditionTreeConstS64Node" => ConditionTreeNodeType.ConstS64Node,
-            "AIConditionTreeConstStringNode" => ConditionTreeNodeType.ConstStringNode,
-            "AIConditionTreeOperationNode" => ConditionTreeNodeType.OperationNode,
-            "AIConditionTreeStateNode" => ConditionTreeNodeType.StateNode,
-            "AIConditionTreeVariableNode" => ConditionTreeNodeType.VariableNode,
+            "rAIConditionTree::ConstEnumNode" => ConditionTreeNodeType.ConstEnumNode,
+            "rAIConditionTree::ConstF32Node" => ConditionTreeNodeType.ConstF32Node,
+            "rAIConditionTree::ConstF64Node" => ConditionTreeNodeType.ConstF64Node,
+            "rAIConditionTree::ConstS32Node" => ConditionTreeNodeType.ConstS32Node,
+            "rAIConditionTree::ConstS64Node" => ConditionTreeNodeType.ConstS64Node,
+            "rAIConditionTree::ConstStringNode" => ConditionTreeNodeType.ConstStringNode,
+            "rAIConditionTree::OperationNode" => ConditionTreeNodeType.OperationNode,
+            "rAIConditionTree::StateNode" => ConditionTreeNodeType.StateNode,
+            "rAIConditionTree::VariableNode" => ConditionTreeNodeType.VariableNode,
             _ => throw new InvalidOperationException("Invalid condition tree node type.")
         };
         _capacity = ChildCount;
