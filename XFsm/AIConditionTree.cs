@@ -15,10 +15,13 @@ public class AIConditionTree : MtObject
 
 public class AIConditionTreeInfo : MtObject
 {
+    public AIConditionTreeInfo(nint instance) : base(instance) { }
+    public AIConditionTreeInfo() { }
+
     public ref AIDEnum Name => ref GetRefInline<AIDEnum>(0x8);
     public AIConditionTreeNode? RootNode
     {
-        get => GetObject<AIConditionTreeNode>(0x20);
+        get => new(Get<nint>(0x20));
         set
         {
             RootNode?.Destroy(true);
@@ -69,7 +72,7 @@ public class AIConditionTreeNode : MtObject
     public ref int ChildCount => ref GetRef<int>(0x8);
     public ObjectArray<AIConditionTreeNode> Children
     {
-        get => new(Get<nint>(0x10), ChildCount);
+        get => new(Get<nint>(0x10), ChildCount, ptr => new AIConditionTreeNode(ptr));
         set
         {
             Set(0x10, value.Address);
@@ -110,7 +113,8 @@ public class AIConditionTreeNode : MtObject
             _capacity += 8;
             var newChildren = new ObjectArray<AIConditionTreeNode>(
                 allocator.Alloc(8 * _capacity),
-                ChildCount + 1
+                ChildCount + 1,
+                ptr => new AIConditionTreeNode(ptr)
             );
 
             NativeMemory.Copy(newChildren.Pointer, Children.Pointer, (nuint)ChildCount * 8);

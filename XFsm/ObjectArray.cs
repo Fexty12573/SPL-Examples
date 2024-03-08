@@ -4,15 +4,17 @@ using SharpPluginLoader.Core;
 
 namespace XFsm;
 
-public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> where T : MtObject, new()
+public unsafe class ObjectArray<T>(nint pointer, int count, Func<nint, T>? createFunc = null) 
+    : IEnumerable<T> where T : MtObject, new()
 {
+    private readonly Func<nint, T>? _createFunc = createFunc;
     public int Count { get; } = count;
     public nint Address => (nint)Pointer;
     public nint* Pointer { get; } = (nint*)pointer;
 
     public T this[int index]
     {
-        get => new() { Instance = Pointer[index] };
+        get => _createFunc?.Invoke(Pointer[index]) ?? new() { Instance = Pointer[index] };
         set => Pointer[index] = value.Instance;
     }
 
