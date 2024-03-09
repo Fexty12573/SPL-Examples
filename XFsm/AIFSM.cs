@@ -34,7 +34,7 @@ public class AIFSMCluster : AIFSMObject
     public ref int NodeCount => ref GetRef<int>(0x14);
     public ObjectArray<AIFSMNode> Nodes
     {
-        get => new(Get<nint>(0x18), NodeCount);
+        get => new(Get<nint>(0x18), NodeCount, ptr => new AIFSMNode(ptr));
         set
         {
             Set(0x18, value.Address);
@@ -51,7 +51,8 @@ public class AIFSMCluster : AIFSMObject
             _nodeCapacity += 32;
             var newNodes = new ObjectArray<AIFSMNode>(
                 allocator.Alloc(8 * _nodeCapacity), 
-                NodeCount + 1
+                NodeCount + 1,
+                ptr => new AIFSMNode(ptr)
             );
             
             NativeMemory.Copy(newNodes.Pointer, Nodes.Pointer, (nuint)NodeCount * 8);

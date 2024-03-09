@@ -18,7 +18,7 @@ public class AIConditionTreeInfo : MtObject
     public ref AIDEnum Name => ref GetRefInline<AIDEnum>(0x8);
     public AIConditionTreeNode? RootNode
     {
-        get => GetObject<AIConditionTreeNode>(0x20);
+        get => new(Get<nint>(0x20));
         set
         {
             RootNode?.Destroy(true);
@@ -69,7 +69,7 @@ public class AIConditionTreeNode : MtObject
     public ref int ChildCount => ref GetRef<int>(0x8);
     public ObjectArray<AIConditionTreeNode> Children
     {
-        get => new(Get<nint>(0x10), ChildCount);
+        get => new(Get<nint>(0x10), ChildCount, ptr => new AIConditionTreeNode(ptr));
         set
         {
             Set(0x10, value.Address);
@@ -110,7 +110,8 @@ public class AIConditionTreeNode : MtObject
             _capacity += 8;
             var newChildren = new ObjectArray<AIConditionTreeNode>(
                 allocator.Alloc(8 * _capacity),
-                ChildCount + 1
+                ChildCount + 1,
+                ptr => new AIConditionTreeNode(ptr)
             );
 
             NativeMemory.Copy(newChildren.Pointer, Children.Pointer, (nuint)ChildCount * 8);
@@ -266,7 +267,7 @@ public class AIConditionTreeVariableNode : AIConditionTreeNode
 
         public string PropertyName
         {
-            get => PropertyNamePtr->GetString();
+            get => PropertyNamePtr != null ? PropertyNamePtr->GetString() : "N/A";
             set
             {
                 fixed (MtString** ptr = &PropertyNamePtr)
@@ -275,7 +276,7 @@ public class AIConditionTreeVariableNode : AIConditionTreeNode
         }
         public string OwnerName
         {
-            get => OwnerNamePtr->GetString();
+            get => OwnerNamePtr != null ? OwnerNamePtr->GetString() : "N/A";
             set
             {
                 fixed (MtString** ptr = &OwnerNamePtr)
@@ -297,7 +298,7 @@ public unsafe struct EnumProp
 
     public string Name
     {
-        get => NamePtr->GetString();
+        get => NamePtr != null ? NamePtr->GetString() : "N/A";
         set
         {
             fixed (MtString** ptr = &NamePtr)
@@ -307,7 +308,7 @@ public unsafe struct EnumProp
 
     public string EnumName
     {
-        get => EnumNamePtr->GetString();
+        get => EnumNamePtr != null ? EnumNamePtr->GetString() : "N/A";
         set
         {
             fixed (MtString** ptr = &EnumNamePtr)

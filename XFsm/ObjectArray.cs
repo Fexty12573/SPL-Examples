@@ -4,16 +4,21 @@ using SharpPluginLoader.Core;
 
 namespace XFsm;
 
-public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> where T : MtObject, new()
+public unsafe class ObjectArray<T>(nint pointer, int count, Func<nint, T>? createFunc = null) 
+    : IEnumerable<T> where T : MtObject, new()
 {
     public int Count { get; } = count;
     public nint Address => (nint)Pointer;
     public nint* Pointer { get; } = (nint*)pointer;
 
-    public T this[int index]
+    public T? this[int index]
     {
-        get => new() { Instance = Pointer[index] };
-        set => Pointer[index] = value.Instance;
+        get
+        {
+            var instance = Pointer[index];
+            return instance == 0 ? null : createFunc?.Invoke(instance) ?? new T { Instance = instance };
+        }
+        set => Pointer[index] = value?.Instance ?? 0;
     }
 
     public void Reverse(int index, int count_)
@@ -32,16 +37,23 @@ public unsafe class ObjectArray<T>(nint pointer, int count) : IEnumerable<T> whe
         (Pointer[index1], Pointer[index2]) = (Pointer[index2], Pointer[index1]);
     }
 
-    public IEnumerator<T> GetEnumerator() =>new Enumerator(Pointer, Count);
+    public IEnumerator<T> GetEnumerator() =>new Enumerator(Pointer, Count, createFunc);
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    public struct Enumerator(nint* pointer, int count) : IEnumerator<T>
+    public struct Enumerator(nint* pointer, int count, Func<nint, T>? func) : IEnumerator<T>
     {
         private int _index = -1;
 
-        public T Current => new() { Instance = pointer[_index] };
+        public T Current
+        {
+            get
+            {
+                var instance = pointer[_index];
+                return instance == 0 ? null! : func?.Invoke(instance) ?? new T { Instance = instance };
+            }
+        }
 
-        object IEnumerator.Current => Current;
+        object? IEnumerator.Current => Current;
 
         public readonly void Dispose()
         {
