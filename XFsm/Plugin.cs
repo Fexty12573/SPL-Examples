@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using SharpPluginLoader.Core;
 using ImGuiNET;
@@ -19,6 +20,18 @@ public partial class Plugin : IPlugin
     private MtDti _fsmDti = null!;
     private string _fsmPath = "";
     private string _lastOpenedPath = "";
+    private string _saveToPath = "";
+    private AIFSM? _pendingFsm;
+
+    [LibraryImport("Kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial nint AddDllDirectory(string dir);
+
+    public Plugin()
+    {
+        var dllpath = Path.GetFullPath("./nativePC/plugins/CSharp/XFsm");
+        AddDllDirectory(dllpath);
+        Log.Info("Added DLL directory: " + dllpath);
+    }
 
     public void OnLoad()
     {
@@ -34,6 +47,8 @@ public partial class Plugin : IPlugin
         
         if (!ImGui.Begin("XFsm", ImGuiWindowFlags.DockNodeHost))
             goto Exit;
+
+        ImGui.BeginGroup();
 
         if (ImGui.Button("Open.."))
         {
@@ -208,7 +223,84 @@ public partial class Plugin : IPlugin
 
         _editor.Render();
 
-        Exit:
+        ImGui.EndGroup();
+
+        if (ImGui.BeginDragDropTarget())
+        {
+            if (ImGui.AcceptDragDropPayload("AssetBrowser_Item") != 0)
+            {
+                var payload = ImGui.GetDragDropPayload();
+                string path;
+                unsafe { path = Encoding.UTF8.GetString((byte*)payload.Data, payload.DataSize); }
+                var file = ResourceManager.GetResource<AIFSM>(path, _fsmDti);
+                if (file is not null)
+                {
+                    if (_editor.HasFsm)
+                    {
+                        _pendingFsm = file;
+                        _saveToPath = _lastOpenedPath;
+                        ImGui.OpenPopup("Unsaved Changes");
+                    }
+                    else
+                    {
+                        _editor.SetFsm(file);
+                        _lastOpenedPath = $@".\nativePC\{path}.fsm";
+                    }
+                }
+                else
+                {
+                    Log.Error("Failed to load FSM file.");
+                }
+            }
+
+            ImGui.EndDragDropTarget();
+        }
+
+        if (ImGui.BeginPopupModal("Unsaved Changes"))
+        {
+            ImGui.TextWrapped("Warning: You have unsaved changes. Do you want to save them?" +
+                              " Your changes will be saved to the following file:");
+            ImGui.InputText("##path", ref _saveToPath, 260);
+
+            if (ImGui.Button("Yes"))
+            {
+                _editor.ApplyEditorToObject();
+
+                using var fs = MtFileStream.FromPath(_saveToPath, OpenMode.Write);
+                Ensure.NotNull(fs);
+
+                var serializer = new MtSerializer();
+
+                if (Path.GetExtension(_saveToPath) == ".fsm")
+                {
+                    serializer.SerializeBinary(fs, _editor.Fsm!, 0xE05);
+                }
+                else if (Path.GetExtension(_saveToPath) == ".xml")
+                {
+                    serializer.SerializeXml(fs, _editor.Fsm!, _editor.Fsm!.OwnerObjectName);
+                }
+
+                _editor.SetFsm(_pendingFsm!);
+                _lastOpenedPath = $@".\nativePC\{_pendingFsm!.FilePath}.fsm";
+                _pendingFsm = null;
+
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("No"))
+            {
+                _editor.SetFsm(_pendingFsm!);
+                _lastOpenedPath = $@".\nativePC\{_pendingFsm!.FilePath}.fsm";
+                _pendingFsm = null;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.EndPopup();
+        }
+
+    Exit:
         ImGui.End();
     }
 
@@ -264,6 +356,6 @@ public partial class Plugin : IPlugin
     private static string GetGameCompatiblePath(string path)
     {
         var pathNoExt = GetPathWithoutExtension(path);
-        return Path.GetRelativePath("./nativePC", pathNoExt);
+        return Path.GetRelativePath(Path.GetFullPath("./nativePC"), pathNoExt);
     }
 }

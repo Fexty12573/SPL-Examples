@@ -17,13 +17,14 @@
 
   <ItemGroup>
     <PackageReference Include="GTranslate" Version="2.1.6" />
-    <PackageReference Include="SharpPluginLoader.ImGui" Version="1.90.2" />
+    <PackageReference Include="SharpPluginLoader.ImGui" Version="1.90.2.3" />
     <PackageReference Include="SharpPluginLoader.InternalCallGenerator" Version="1.1.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="SharpPluginLoader.Core.Debug">
-      <HintPath>..\..\SharpPluginLoader\SharpPluginLoader.Core\bin\Debug\net8.0\SharpPluginLoader.Core.Debug.dll</HintPath>
+      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
 

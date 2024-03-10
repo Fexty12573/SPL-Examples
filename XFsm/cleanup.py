@@ -13,6 +13,12 @@ KEEPITEMS = [
     "XFsm.Native.lib",
     "XFsm.Native.exp",
     "GTranslate.dll",
+    "cdt.dll",
+    "cgraph.dll",
+    "gvc.dll",
+    "pathplan.dll",
+    "xdot.dll",
+    "expat.dll",
 ]
 
 def cleanup(path: Path):

@@ -12,6 +12,7 @@ using Microsoft.CodeAnalysis;
 using SharpPluginLoader.Core.MtTypes;
 using SharpPluginLoader.Core.Rendering;
 using System.Reflection;
+using System.Runtime.InteropServices.Marshalling;
 using SharpPluginLoader.Core.Entities;
 
 namespace XFsm;
@@ -24,6 +25,7 @@ public class XFsmEditor
     private bool _isWeaponFsm;
     private WeaponType _weaponType = WeaponType.None;
     private nint _ctx;
+    private nint _gvCtx;
     private readonly BingTranslator _translator = new();
 
     private bool _translating = false;
@@ -102,10 +104,26 @@ public class XFsmEditor
 
     #endregion
 
+    ~XFsmEditor()
+    {
+        if (_ctx != 0)
+        {
+            NodeEditor.DestroyEditor(_ctx);
+            _ctx = 0;
+        }
+
+        if (_gvCtx != 0)
+        {
+            NodeEditor.GvFreeContext(_gvCtx);
+            _gvCtx = 0;
+        }
+    }
+
     public void SetFsm(AIFSM fsm)
     {
         if (_ctx == 0)
         {
+            _gvCtx = NodeEditor.GvContext();
             _ctx = NodeEditor.CreateEditor();
             
             NodeEditor.SetCurrentEditor(_ctx);
@@ -371,6 +389,8 @@ public class XFsmEditor
 
         ImGui.Separator();
 
+        ImGui.IsItemToggledSelection();
+
         ImGui.Text("Custom Algorithm");
 
         ImGui.SameLine();
@@ -390,14 +410,29 @@ public class XFsmEditor
 
         if (ImGui.Button("Apply Layout"))
         {
-            SpringEmbedder.Layout(
-                _nodes, CollectionsMarshal.AsSpan(_links),
-                _rF, _l, _sF
-            );
+            //SpringEmbedder.Layout(
+            //    _nodes, CollectionsMarshal.AsSpan(_links),
+            //    _rF, _l, _sF
+            //);
 
-            foreach (var node in _nodes)
+            Span<XFsmGvcNode> gvcNodes = stackalloc XFsmGvcNode[_nodes.Count];
+            for (var i = 0; i < _nodes.Count; i++)
             {
-                NodeEditor.SetNodePosition(node.Id, node.Position);
+                gvcNodes[i] = new XFsmGvcNode(_nodes[i]);
+            }
+
+            Span<XFsmGvcLink> gvcLinks = stackalloc XFsmGvcLink[_links.Count];
+            for (var i = 0; i < _links.Count; i++)
+            {
+                gvcLinks[i] = new XFsmGvcLink(_links[i].Source.Parent.Id, _links[i].Target.Parent.Id);
+            }
+
+            NodeEditor.GvLayout(_gvCtx, gvcNodes, gvcNodes.Length, gvcLinks, gvcLinks.Length);
+
+            for (var i = 0; i < _nodes.Count; i++)
+            {
+                _nodes[i].Position = gvcNodes[i].Position;
+                NodeEditor.SetNodePosition(_nodes[i].Id, _nodes[i].Position);
             }
         }
 
@@ -1531,15 +1566,18 @@ public class XFsmEditor
         ImGui.SeparatorText("Children");
         ImGui.Indent();
 
+        var drawList = ImGui.GetWindowDrawList();
+
         var i = 0;
         foreach (var child in node.Children)
         {
-            ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
+            ImGui.BeginGroup();
 
             DisplayConditionNode(child, node, i);
             i++;
 
-            ImGui.EndChild();
+            ImGui.EndGroup();
+            drawList.AddRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), new MtColor(77, 77, 77, 200));
         }
 
         ImGui.Unindent();
@@ -1753,6 +1791,26 @@ public class XFsmEditor
     {
         return (1 << 30) | parent.Id;
     }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly unsafe struct XFsmGvcNode(XFsmNode node) : IDisposable
+{
+    public readonly int Id = node.Id;
+    public readonly byte* Name = Utf8StringMarshaller.ConvertToUnmanaged(node.Name);
+    public readonly Vector2 Position = node.Position;
+
+    public void Dispose()
+    {
+        Utf8StringMarshaller.Free(Name);
+    }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly struct XFsmGvcLink(int source, int target)
+{
+    public readonly int Source = source;
+    public readonly int Target = target;
 }
 
 public class XFsmNode

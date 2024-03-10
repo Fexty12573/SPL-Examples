@@ -499,6 +499,15 @@ public static unsafe partial class InternalCalls
     [InternalCall]
     public static partial void DockBuilderFinish(uint id);
 
+    [InternalCall]
+    public static partial nint GvContext();
+
+    [InternalCall]
+    public static partial void GvFreeContext(nint ctx);
+
+    [InternalCall]
+    public static partial void GvLayout(nint ctx, Span<XFsmGvcNode> nodes, int nodeCount, Span<XFsmGvcLink> links, int linkCount);
+
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);
 
