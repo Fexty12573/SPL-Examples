@@ -15,6 +15,9 @@ public class AIConditionTree : MtObject
 
 public class AIConditionTreeInfo : MtObject
 {
+    public AIConditionTreeInfo(nint instance) : base(instance) { }
+    public AIConditionTreeInfo() { }
+
     public ref AIDEnum Name => ref GetRefInline<AIDEnum>(0x8);
     public AIConditionTreeNode? RootNode
     {

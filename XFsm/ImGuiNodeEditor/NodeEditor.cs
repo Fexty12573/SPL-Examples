@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SharpPluginLoader.Core.Resources;
+using SharpPluginLoader.Core.Entities;
 
 namespace XFsm.ImGuiNodeEditor;
 
@@ -523,6 +524,10 @@ public static unsafe partial class InternalCalls
 
     [InternalCall(Pattern = "49 03 D1 33 C0 66 0F 1F 44 00 00 48 83 BC C2 70 80 00 00 00", Offset = -37)]
     private static partial void RegisterResource(nint sMhResource, nint resource, uint x);
+
+    [InternalCall(Pattern = "48 8b 81 90 0d 00 00 4c 8b e1 80 b8 34 89 00 00 00", Offset = -24)]
+    public static partial void ReloadPlayerFsm(nint humanController);
+    public static void ReloadPlayerFsm(Player player) => ReloadPlayerFsm(player.Get<nint>(0x12608));
 
     public static void RegisterResource(Resource resource)
     {

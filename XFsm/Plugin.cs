@@ -8,6 +8,8 @@ using Microsoft.Win32;
 using SharpPluginLoader.Core.IO;
 using SharpPluginLoader.Core.Memory;
 using SharpPluginLoader.Core.Rendering;
+using XFsm.ImGuiNodeEditor;
+using SharpPluginLoader.Core.Entities;
 
 namespace XFsm;
 
@@ -219,6 +221,14 @@ public partial class Plugin : IPlugin
                        """);
 
             ImGui.EndTooltip();
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Reload Player FSM") && Player.MainPlayer is not null)
+        {
+            _editor.ApplyEditorToObject();
+            InternalCalls.ReloadPlayerFsm(Player.MainPlayer);
         }
 
         _editor.Render();
