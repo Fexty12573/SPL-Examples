@@ -103,7 +103,7 @@ public partial class Plugin : IPlugin
     {
         InitializeConfig();
         InitializeBoneManager();
-
+        
         _mainViewport = CameraSystem.MainViewport;
         _colComponentDti = MtDti.Find("cpObjCollision")!;
         _collGeomDti = MtDti.Find("cCollGeom")!;
