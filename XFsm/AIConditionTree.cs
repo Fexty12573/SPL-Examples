@@ -270,7 +270,7 @@ public class AIConditionTreeVariableNode : AIConditionTreeNode
 
         public string PropertyName
         {
-            get => PropertyNamePtr->GetString();
+            get => PropertyNamePtr != null ? PropertyNamePtr->GetString() : "N/A";
             set
             {
                 fixed (MtString** ptr = &PropertyNamePtr)
@@ -279,7 +279,7 @@ public class AIConditionTreeVariableNode : AIConditionTreeNode
         }
         public string OwnerName
         {
-            get => OwnerNamePtr->GetString();
+            get => OwnerNamePtr != null ? OwnerNamePtr->GetString() : "N/A";
             set
             {
                 fixed (MtString** ptr = &OwnerNamePtr)
@@ -301,7 +301,7 @@ public unsafe struct EnumProp
 
     public string Name
     {
-        get => NamePtr->GetString();
+        get => NamePtr != null ? NamePtr->GetString() : "N/A";
         set
         {
             fixed (MtString** ptr = &NamePtr)
@@ -311,7 +311,7 @@ public unsafe struct EnumProp
 
     public string EnumName
     {
-        get => EnumNamePtr->GetString();
+        get => EnumNamePtr != null ? EnumNamePtr->GetString() : "N/A";
         set
         {
             fixed (MtString** ptr = &EnumNamePtr)

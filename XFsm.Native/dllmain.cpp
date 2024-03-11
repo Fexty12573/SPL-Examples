@@ -2,6 +2,8 @@
 #include "SPL/InternalCall.h"
 #include "renderdoc_app.h"
 
+#include <graphviz/gvc.h>
+
 #define IMGUI_DISABLE_OBSOLETE_KEYIO
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -30,8 +32,54 @@ void render_doc_trigger_capture() {
     }
 }
 
+struct XFsmGvcNode {
+    int Id;
+    char* Name;
+    float X, Y;
+};
+
+struct XFsmGvcEdge {
+    int SourceId;
+    int TargetId;
+};
+
+void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEdge* edges, int edge_count) {
+    Agdesc_t desc{};
+    desc.directed = true;
+    desc.maingraph = true;
+    agseterr(AGWARN);
+    graph_t* g = agopen((char*)"G", desc, nullptr);
+
+    std::unordered_map<int, Agnode_t*> node_map;
+
+    for (int i = 0; i < node_count; i++) {
+        
+        const auto node = agnode(g, nodes[i].Name, 1);
+        node_map[nodes[i].Id] = node;
+    }
+
+    for (int i = 0; i < edge_count; i++) {
+        auto edge = edges[i];
+        agedge(g, node_map[edge.SourceId], node_map[edge.TargetId], nullptr, 1);
+    }
+
+    const auto result = gvLayout(gv, g, "dot");
+    if (result != 0) {
+        agclose(g);
+        return;
+    }
+
+    for (int i = 0; i < node_count; i++) {
+        const auto node = node_map[nodes[i].Id];
+        nodes[i].X = ND_coord(node).x;
+        nodes[i].Y = ND_coord(node).y;
+    }
+
+    agclose(g);
+}
+
 SPL_INTERNAL_CALL int get_internal_call_count() {
-    return 134;
+    return 137;
 }
 
 SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
@@ -174,6 +222,9 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "DockBuilderCopyNode", ImGui::DockBuilderCopyNode };
     *icalls++ = { "DockBuilderCopyWindowSettings", ImGui::DockBuilderCopyWindowSettings };
     *icalls++ = { "DockBuilderFinish", ImGui::DockBuilderFinish };
+    *icalls++ = { "GvContext", gvContext };
+    *icalls++ = { "GvFreeContext", gvFreeContext };
+    *icalls++ = { "GvLayout", layout_nodes };
 }
 
 

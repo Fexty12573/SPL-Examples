@@ -5,6 +5,8 @@ using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using SharpPluginLoader.Core.Resources;
+
 namespace XFsm.ImGuiNodeEditor;
 
 
@@ -497,6 +499,15 @@ public static unsafe partial class InternalCalls
     [InternalCall]
     public static partial void DockBuilderFinish(uint id);
 
+    [InternalCall]
+    public static partial nint GvContext();
+
+    [InternalCall]
+    public static partial void GvFreeContext(nint ctx);
+
+    [InternalCall]
+    public static partial void GvLayout(nint ctx, Span<XFsmGvcNode> nodes, int nodeCount, Span<XFsmGvcLink> links, int linkCount);
+
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);
 
@@ -509,6 +520,27 @@ public static unsafe partial class InternalCalls
 
     [InternalCall(Pattern = "48 83 ec 20 48 8b d9 48 8b fa 48 8b 09 48 8d 41 08", Offset = -6)]
     public static partial void MtStringAssign(nint str, string value);
+
+    [InternalCall(Pattern = "49 03 D1 33 C0 66 0F 1F 44 00 00 48 83 BC C2 70 80 00 00 00", Offset = -37)]
+    private static partial void RegisterResource(nint sMhResource, nint resource, uint x);
+
+    public static void RegisterResource(Resource resource)
+    {
+        var sMhResource = ResourceManager.SingletonInstance;
+        var resourceTable = new NativeArray<nint>(sMhResource.Get<nint>(0x8070), 0x40000);
+        var n = (int)(resource.Get<uint>(0x78) & 0x1FFF) << 5;
+
+        for (var i = 0; i < 32; ++i)
+        {
+            if (resourceTable[n + i] == 0)
+            {
+                resourceTable[n + i] = resource.Instance;
+                break;
+            }
+        }
+
+        RegisterResource(sMhResource.Instance, resource.Instance, 1);
+    }
 }
 
 

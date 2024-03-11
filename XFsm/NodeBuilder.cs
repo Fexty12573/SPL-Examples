@@ -14,7 +14,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
         _hasHeader = false;
         _headerMin = _headerMax = new Vector2();
 
-        PushStyleVarVec4(StyleVar.NodePadding, new Vector4(8f, 4f, 4f, 8f));
+        PushStyleVarVec4(StyleVar.NodePadding, new Vector4(8f, 4f, 8f, 8f));
 
         BeginNode(nodeId);
 
@@ -50,7 +50,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
                 drawList.AddImageRounded(
                     texture,
                     _headerMin - new Vector2(8f - halfBorderWidth, 4f - halfBorderWidth),
-                    _headerMax - new Vector2(8f - halfBorderWidth, 0),
+                    _headerMax + new Vector2(8f - halfBorderWidth, 0),
                     new Vector2(),
                     uv,
                     headerColor,
@@ -251,7 +251,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
             case Stage.End:
                 if (oldStage == Stage.Input)
                     ImGui.Spring(1, 0);
-                else if (oldStage != Stage.Begin)
+                if (oldStage != Stage.Begin)
                     ImGui.EndHorizontal();
 
                 _contentMin = ImGui.GetItemRectMin();
@@ -292,7 +292,7 @@ internal class NodeBuilder(nint texture = 0, uint textureWidth = 0, uint texture
     }
 
     private nint _nodeId;
-    private Stage _currentStage;
+    private Stage _currentStage = Stage.Invalid;
     private MtColor _headerColor;
     private Vector2 _nodeMin;
     private Vector2 _nodeMax;

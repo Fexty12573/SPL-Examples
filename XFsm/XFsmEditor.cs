@@ -12,6 +12,8 @@ using Microsoft.CodeAnalysis;
 using SharpPluginLoader.Core.MtTypes;
 using SharpPluginLoader.Core.Rendering;
 using System.Reflection;
+using System.Runtime.InteropServices.Marshalling;
+using SharpPluginLoader.Core.Entities;
 
 namespace XFsm;
 
@@ -21,7 +23,9 @@ using FA6 = FontAwesome6;
 public class XFsmEditor
 {
     private bool _isWeaponFsm;
+    private WeaponType _weaponType = WeaponType.None;
     private nint _ctx;
+    private nint _gvCtx;
     private readonly BingTranslator _translator = new();
 
     private bool _translating = false;
@@ -50,6 +54,9 @@ public class XFsmEditor
     private float _rF = 1000f;
     private float _l = 500f;
     private float _sF = 0.001f;
+
+    private Vector4 _actioNodeColor = new MtColor(255, 224, 4, 255).ToVector4();
+    private Vector4 _motionNodeColor = new MtColor(140, 87, 195, 255).ToVector4();
 
     private bool _firstRender = true;
 
@@ -97,10 +104,26 @@ public class XFsmEditor
 
     #endregion
 
+    ~XFsmEditor()
+    {
+        if (_ctx != 0)
+        {
+            NodeEditor.DestroyEditor(_ctx);
+            _ctx = 0;
+        }
+
+        if (_gvCtx != 0)
+        {
+            NodeEditor.GvFreeContext(_gvCtx);
+            _gvCtx = 0;
+        }
+    }
+
     public void SetFsm(AIFSM fsm)
     {
         if (_ctx == 0)
         {
+            _gvCtx = NodeEditor.GvContext();
             _ctx = NodeEditor.CreateEditor();
             
             NodeEditor.SetCurrentEditor(_ctx);
@@ -108,7 +131,7 @@ public class XFsmEditor
             ref var style = ref NodeEditor.GetStyle();
             style.LinkStrength = 170f;
             style.NodeRounding = 9f;
-            style.NodeBorderWidth = 1f;
+            style.NodeBorderWidth = 0f;
             style.HoveredNodeBorderWidth = 3.5f;
             style.HoveredNodeBorderOffset = 2f;
             style.SelectedNodeBorderWidth = 5f;
@@ -173,6 +196,17 @@ public class XFsmEditor
             _linkMotionDti = MtDti.Find($"nPlFSM::LinkMotion_{wpStr}");
             _actionContainerName = $"Action_{wpStr}";
             _motionContainerName = $"LinkMotion_{wpStr}";
+
+            if (int.TryParse(wpStr[1..], out var wpId))
+            {
+                _weaponType = (WeaponType)wpId;
+            }
+            else
+            {
+                _weaponType = WeaponType.None;
+                Log.Warn($"Failed to parse weapon type from {wpStr}");
+                ImGuiExtensions.NotificationWarning($"Failed to parse weapon type from {wpStr}");
+            }
 
             Ensure.NotNull(_actionSetDti);
             Ensure.NotNull(_linkMotionDti);
@@ -355,6 +389,8 @@ public class XFsmEditor
 
         ImGui.Separator();
 
+        ImGui.IsItemToggledSelection();
+
         ImGui.Text("Custom Algorithm");
 
         ImGui.SameLine();
@@ -374,14 +410,29 @@ public class XFsmEditor
 
         if (ImGui.Button("Apply Layout"))
         {
-            SpringEmbedder.Layout(
-                _nodes, CollectionsMarshal.AsSpan(_links),
-                _rF, _l, _sF
-            );
+            //SpringEmbedder.Layout(
+            //    _nodes, CollectionsMarshal.AsSpan(_links),
+            //    _rF, _l, _sF
+            //);
 
-            foreach (var node in _nodes)
+            Span<XFsmGvcNode> gvcNodes = stackalloc XFsmGvcNode[_nodes.Count];
+            for (var i = 0; i < _nodes.Count; i++)
             {
-                NodeEditor.SetNodePosition(node.Id, node.Position);
+                gvcNodes[i] = new XFsmGvcNode(_nodes[i]);
+            }
+
+            Span<XFsmGvcLink> gvcLinks = stackalloc XFsmGvcLink[_links.Count];
+            for (var i = 0; i < _links.Count; i++)
+            {
+                gvcLinks[i] = new XFsmGvcLink(_links[i].Source.Parent.Id, _links[i].Target.Parent.Id);
+            }
+
+            NodeEditor.GvLayout(_gvCtx, gvcNodes, gvcNodes.Length, gvcLinks, gvcLinks.Length);
+
+            for (var i = 0; i < _nodes.Count; i++)
+            {
+                _nodes[i].Position = gvcNodes[i].Position;
+                NodeEditor.SetNodePosition(_nodes[i].Id, _nodes[i].Position);
             }
         }
 
@@ -691,6 +742,12 @@ public class XFsmEditor
         }
         ImGui.End();
 
+        ImGui.Begin("Conditions");
+        {
+            ShowConditionList();
+        }
+        ImGui.End();
+
         NodeEditor.SetCurrentEditor(0);
 
         return;
@@ -807,14 +864,6 @@ public class XFsmEditor
             }
 
             ImGui.Spring(1);
-            //if (ImGui.Button($"{FA6.Plus} Add Link"))
-            //{
-            //    var link = node.BackingNode.AddLink($"{node.Name} -> Unknown");
-            //    link.HasCondition = false;
-
-            //    node.OutputPins.Add(new XFsmOutputPin(node, link, node.OutputPins.Count));
-            //}
-            //ImGui.Spring(1);
             ImGui.Dummy(new Vector2(0, 28));
             ImGui.Spring(0);
         }
@@ -1006,16 +1055,44 @@ public class XFsmEditor
 
     private void ShowRightSidePanel()
     {
-        Span<nint> selectedLinks = stackalloc nint[1];
-        if (NodeEditor.GetSelectedLinkCount() == 1)
+        if (NodeEditor.GetSelectedNodeCount() == 1)
         {
-            NodeEditor.GetSelectedLinks(selectedLinks, 1);
+            Span<nint> selectedNodes = stackalloc nint[1];
+            NodeEditor.GetSelectedNodes(selectedNodes, selectedNodes.Length);
 
-            var link = GetLinkById(selectedLinks[0]);
-            if (link is not null)
+            var node = GetNodeById(selectedNodes[0]);
+            if (node is not null)
             {
-                ImGui.SeparatorText("Selected Link");
-                ShowLinkProperties(link);
+                ImGui.SeparatorText($"Links for Node {node.Name} : {node.RealId}");
+                foreach (var link in _links)
+                {
+                    if (link.Source.Parent == node)
+                    {
+                        if (ImGui.CollapsingHeader(link.Name))
+                        {
+                            ShowLinkProperties(link);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            Span<nint> selectedLinks = stackalloc nint[NodeEditor.GetSelectedLinkCount()];
+            NodeEditor.GetSelectedLinks(selectedLinks, selectedLinks.Length);
+
+            ImGui.SeparatorText(selectedLinks.Length > 1 ? "Selected Links" : "Selected Link");
+
+            foreach (var linkId in selectedLinks)
+            {
+                var link = GetLinkById(linkId);
+                if (link is not null)
+                {
+                    if (ImGui.CollapsingHeader(link.Name))
+                    {
+                        ShowLinkProperties(link);
+                    }
+                }
             }
         }
     }
@@ -1053,6 +1130,17 @@ public class XFsmEditor
             }
 
             var process = wpNode.BackingNode.Processes[0];
+            if (process is null)
+            {
+                ImGui.Text("No process found");
+                if (ImGui.Button("Add Process"))
+                {
+                    wpNode.BackingNode.AddProcess("New Process");
+                }
+
+                return;
+            }
+
             var parameter = process.Parameter;
             var containerName = process.ContainerName;
             ImGui.Text($"Process Container: {containerName}");
@@ -1113,17 +1201,32 @@ public class XFsmEditor
 
         var fsmLink = link.Source.BackingLink;
         if (!fsmLink.HasCondition)
-            return;
+        {
+            ImGui.Text("No Condition");
+            if (ImGui.Button("Add Condition"))
+            {
+                fsmLink.HasCondition = true;
+                fsmLink.ConditionId = 0;
+            }
 
-        ImGui.Text("Has Condition");
+            return;
+        }
+
+        if (ImGui.Button("Remove Condition"))
+        {
+            fsmLink.HasCondition = false;
+            fsmLink.ConditionId = 0;
+            return;
+        }
+
+        ImGui.InputInt("Condition Id", ref fsmLink.ConditionId);
+
         var condition = GetConditionById(fsmLink.ConditionId);
         if (condition is null)
         {
             ImGui.TextColored(new Vector4(1, .3f, .3f, 1), "Condition not found");
             return;
         }
-
-        ImGui.Text($"Condition Id: {condition.Id}");
 
         var conditionName = condition.BackingInfo.Name.Name;
         if (ImGui.InputText("Condition Name", ref conditionName, 1024))
@@ -1210,6 +1313,62 @@ public class XFsmEditor
         }
     }
 
+    private string _conditionFilter = "";
+    private bool _filterMatchTranslated = false;
+    private bool _conditionShowTranslated = false;
+    private void ShowConditionList()
+    {
+        if (_isWeaponFsm)
+        {
+            ImGui.InputText("Filter", ref _conditionFilter, 1024);
+            ImGui.SameLine();
+            ImGui.Checkbox("Match Translated", ref _filterMatchTranslated);
+            ImGui.SameLine();
+            ImGui.Checkbox("Show Translated", ref _conditionShowTranslated);
+
+            var ignoreFilter = string.IsNullOrEmpty(_conditionFilter);
+
+            if (ImGui.TreeNode("Generic"))
+            {
+                foreach (var (original, translated) in ConditionList.Generic)
+                {
+                    if (ignoreFilter || original.Contains(_conditionFilter)
+                                     || (_filterMatchTranslated && translated.Contains(_conditionFilter)))
+                    {
+                        if (ImGui.Selectable(_conditionShowTranslated ? $"{translated} ({original})" : original))
+                        {
+                            ImGui.SetClipboardText(original);
+                            ImGuiExtensions.NotificationInfo("Copied to clipboard");
+                        }
+                    }
+                }
+
+                ImGui.TreePop();
+            }
+
+            if (_weaponType != WeaponType.None)
+            {
+                if (ImGui.TreeNode(_weaponType.ToString()))
+                {
+                    foreach (var (original, translated) in ConditionList.WeaponSpecific[_weaponType])
+                    {
+                        if (ignoreFilter || original.Contains(_conditionFilter)
+                                         || (_filterMatchTranslated && translated.Contains(_conditionFilter)))
+                        {
+                            if (ImGui.Selectable(_conditionShowTranslated ? $"{translated} ({original})" : original))
+                            {
+                                ImGui.SetClipboardText(original);
+                                ImGuiExtensions.NotificationInfo("Copied to clipboard");
+                            }
+                        }
+                    }
+                    
+                    ImGui.TreePop();
+                }
+            }
+        }
+    }
+
     private void DrawPinIcon(XFsmPin pin, bool connected)
     {
         MtColor color;
@@ -1286,6 +1445,9 @@ public class XFsmEditor
             ImGui.DragFloat("Group Rounding", ref style.GroupRounding, 0.1f);
             ImGui.DragFloat("Group Border Width", ref style.GroupBorderWidth, 0.1f);
             ImGui.InputFloat("Highlight Connected Links", ref style.HighlightConnectedLinks);
+
+            ImGui.ColorEdit4("Action Node Color", ref _actioNodeColor);
+            ImGui.ColorEdit4("Motion Node Color", ref _motionNodeColor);
 
             for (var i = 0; i < (int)StyleColor.Count; i++)
             {
@@ -1404,15 +1566,18 @@ public class XFsmEditor
         ImGui.SeparatorText("Children");
         ImGui.Indent();
 
+        var drawList = ImGui.GetWindowDrawList();
+
         var i = 0;
         foreach (var child in node.Children)
         {
-            ImGui.BeginChild($"##conditionNodeChild{i}", new Vector2(0, 0), ImGuiChildFlags.Border);
+            ImGui.BeginGroup();
 
             DisplayConditionNode(child, node, i);
             i++;
 
-            ImGui.EndChild();
+            ImGui.EndGroup();
+            drawList.AddRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), new MtColor(77, 77, 77, 200));
         }
 
         ImGui.Unindent();
@@ -1564,14 +1729,14 @@ public class XFsmEditor
         return _nodes.Count == 0 ? 0 : _nodes.Max(x => x.Id) + 1;
     }
 
-    private static MtColor GetHeaderColorForNode(XFsmNode node)
+    private MtColor GetHeaderColorForNode(XFsmNode node)
     {
         return node switch
         {
             XFsmWeaponNode wpNode => wpNode.NodeType switch
             {
-                WeaponFsmNodeType.Action => new MtColor(90, 90, 255, 255),
-                WeaponFsmNodeType.Motion => new MtColor(140, 220, 140, 255),
+                WeaponFsmNodeType.Action => MtColor.FromVector4(_actioNodeColor),
+                WeaponFsmNodeType.Motion => MtColor.FromVector4(_motionNodeColor),
                 _ => new MtColor(255, 255, 255, 255)
             },
             _ => new MtColor(255, 255, 255, 255)
@@ -1626,6 +1791,26 @@ public class XFsmEditor
     {
         return (1 << 30) | parent.Id;
     }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly unsafe struct XFsmGvcNode(XFsmNode node) : IDisposable
+{
+    public readonly int Id = node.Id;
+    public readonly byte* Name = Utf8StringMarshaller.ConvertToUnmanaged(node.Name);
+    public readonly Vector2 Position = node.Position;
+
+    public void Dispose()
+    {
+        Utf8StringMarshaller.Free(Name);
+    }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly struct XFsmGvcLink(int source, int target)
+{
+    public readonly int Source = source;
+    public readonly int Target = target;
 }
 
 public class XFsmNode
