@@ -2,6 +2,7 @@
 #include "SPL/InternalCall.h"
 #include "renderdoc_app.h"
 
+#define GVDLL
 #include <graphviz/gvc.h>
 
 #define IMGUI_DISABLE_OBSOLETE_KEYIO
@@ -43,20 +44,17 @@ struct XFsmGvcEdge {
     int TargetId;
 };
 
-extern gvplugin_library_t gvplugin_dot_layout_LTX_library;
+extern "C" __declspec(dllimport) gvplugin_library_t gvplugin_dot_layout_LTX_library;
 
-GVC_t* make_gvc_context() {
+GVC_t* gv_context() {
     const auto gvc = gvContext();
     gvAddLibrary(gvc, &gvplugin_dot_layout_LTX_library);
     return gvc;
 }
 
 void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEdge* edges, int edge_count) {
-    Agdesc_t desc{};
-    desc.directed = true;
-    desc.maingraph = true;
     agseterr(AGWARN);
-    graph_t* g = agopen((char*)"G", desc, nullptr);
+    graph_t* g = agopen((char*)"G", Agdirected, nullptr);
 
     std::unordered_map<int, Agnode_t*> node_map;
 
@@ -78,8 +76,8 @@ void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEd
 
     for (int i = 0; i < node_count; i++) {
         const auto node = node_map[nodes[i].Id];
-        nodes[i].X = ND_coord(node).x;
-        nodes[i].Y = ND_coord(node).y;
+        nodes[i].X = (float)ND_coord(node).x;
+        nodes[i].Y = (float)ND_coord(node).y;
     }
 
     agclose(g);
@@ -229,7 +227,7 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "DockBuilderCopyNode", ImGui::DockBuilderCopyNode };
     *icalls++ = { "DockBuilderCopyWindowSettings", ImGui::DockBuilderCopyWindowSettings };
     *icalls++ = { "DockBuilderFinish", ImGui::DockBuilderFinish };
-    *icalls++ = { "GvContext", gvContext };
+    *icalls++ = { "GvContext", gv_context };
     *icalls++ = { "GvFreeContext", gvFreeContext };
     *icalls++ = { "GvLayout", layout_nodes };
 }
