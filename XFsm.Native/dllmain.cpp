@@ -43,6 +43,14 @@ struct XFsmGvcEdge {
     int TargetId;
 };
 
+extern gvplugin_library_t gvplugin_dot_layout_LTX_library;
+
+GVC_t* make_gvc_context() {
+    const auto gvc = gvContext();
+    gvAddLibrary(gvc, &gvplugin_dot_layout_LTX_library);
+    return gvc;
+}
+
 void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEdge* edges, int edge_count) {
     Agdesc_t desc{};
     desc.directed = true;
@@ -53,7 +61,6 @@ void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEd
     std::unordered_map<int, Agnode_t*> node_map;
 
     for (int i = 0; i < node_count; i++) {
-        
         const auto node = agnode(g, nodes[i].Name, 1);
         node_map[nodes[i].Id] = node;
     }
