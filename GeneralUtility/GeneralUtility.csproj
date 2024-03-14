@@ -8,18 +8,13 @@
     <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
     <IsComponent>true</IsComponent>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Reference Include="SharpPluginLoader.Core.Debug">
-      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PackageReference Include="SharpPluginLoader.Core" Version="0.0.4.1" />
 	</ItemGroup>
 
 </Project>

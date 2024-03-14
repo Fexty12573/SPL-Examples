@@ -819,6 +819,7 @@ partial class MainWindow
         // tbActionChainLoopCount
         // 
         tbActionChainLoopCount.Location = new Point(375, 46);
+        tbActionChainLoopCount.Maximum = new decimal(new int[] { 99999, 0, 0, 0 });
         tbActionChainLoopCount.Name = "tbActionChainLoopCount";
         tbActionChainLoopCount.Size = new Size(75, 23);
         tbActionChainLoopCount.TabIndex = 8;
@@ -885,6 +886,7 @@ partial class MainWindow
         // nudMonsterAction
         // 
         nudMonsterAction.Location = new Point(50, 17);
+        nudMonsterAction.Maximum = new decimal(new int[] { 99999, 0, 0, 0 });
         nudMonsterAction.Name = "nudMonsterAction";
         nudMonsterAction.Size = new Size(120, 23);
         nudMonsterAction.TabIndex = 1;

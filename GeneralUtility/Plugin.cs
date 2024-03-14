@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Numerics;
 using System.Text.Json;
 using SharpPluginLoader.Core;
 using SharpPluginLoader.Core.Actions;
@@ -22,8 +23,8 @@ public class Plugin : IPlugin
 
     public Config Config { get; private set; } = null!;
     public Dictionary<MonsterType, ActionChain> ActionChains => [];
-    public ConcurrentDictionary<Monster, MtVector3> LockedCoordinates { get; } = [];
-    public ConcurrentDictionary<Monster, MtVector3> LockedTargetCoordinates { get; } = [];
+    public ConcurrentDictionary<Monster, Vector3> LockedCoordinates { get; } = [];
+    public ConcurrentDictionary<Monster, Vector3> LockedTargetCoordinates { get; } = [];
 
     private static MainWindow _mainWindow = null!;
     private Thread? _winformsThread;
@@ -34,18 +35,6 @@ public class Plugin : IPlugin
     };
 
     private Hook<SetTargetPositionDelegate> _setTargetPositionHook = null!;
-
-    public PluginData Initialize()
-    {
-        return new PluginData
-        {
-            //OnUpdate = true,
-            OnMonsterCreate = true,
-            OnMonsterDestroy = true,
-            OnMonsterAction = true,
-            OnEntityAnimation = true
-        };
-    }
 
     public void OnLoad()
     {
@@ -121,7 +110,7 @@ public class Plugin : IPlugin
         LockedCoordinates[monster] = monster.Position;
     }
 
-    public void LockCoordinates(Monster monster, MtVector3 coords)
+    public void LockCoordinates(Monster monster, Vector3 coords)
     {
         LockedCoordinates[monster] = coords;
     }
@@ -156,14 +145,20 @@ public class Plugin : IPlugin
         return ActionChains.GetValueOrDefault(monsterType);
     }
 
-    public void SetTargetPositionHook(nint actionParams, int index, ref MtVector3 pos)
+    public void SetTargetPositionHook(nint actionParams, int index, ref Vector3 pos)
     {
         if (_mainWindow.SelectedMonster?.Instance != actionParams - 0x1D700)
+        {
+            _setTargetPositionHook.Original(actionParams, index, ref pos);
             return;
+        }
 
         var monster = new Monster(actionParams - 0x1D700);
         if (LockedTargetCoordinates.TryGetValue(monster, out var coords))
+        {
+            Log.Info($"Setting target position for {monster} to {coords}");
             pos = coords;
+        }
 
         _setTargetPositionHook.Original(actionParams, index, ref pos);
     }
@@ -179,5 +174,5 @@ public class Plugin : IPlugin
         Application.Run(_mainWindow);
     }
 
-    public delegate void SetTargetPositionDelegate(nint actionParams, int index, ref MtVector3 pos);
+    public delegate void SetTargetPositionDelegate(nint actionParams, int index, ref Vector3 pos);
 }

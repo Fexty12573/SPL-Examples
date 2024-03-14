@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Media;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -69,7 +70,7 @@ public partial class MainWindow : Form
         });
     }
 
-    public void SetMonsterCoords(MtVector3 coords)
+    public void SetMonsterCoords(Vector3 coords)
     {
         tbMonsterCoords.Invoke(() =>
         {
@@ -77,7 +78,7 @@ public partial class MainWindow : Form
         });
     }
 
-    public void SetPlayerCoords(MtVector3 coords)
+    public void SetPlayerCoords(Vector3 coords)
     {
         tbPlayerCoords.Invoke(() =>
         {
@@ -208,7 +209,7 @@ public partial class MainWindow : Form
         if (SelectedMonster is null)
             return;
 
-        var coords = new MtVector3((float)tbMonsterX.Value, (float)tbMonsterY.Value, (float)tbMonsterZ.Value);
+        var coords = new Vector3((float)tbMonsterX.Value, (float)tbMonsterY.Value, (float)tbMonsterZ.Value);
         SelectedMonster.Teleport(coords);
 
         if (cbCoordsLocked.Checked)
@@ -295,7 +296,7 @@ public partial class MainWindow : Form
 
     private void btnSetPlXYZ_Click(object sender, EventArgs e)
     {
-        Player.MainPlayer?.Teleport(new MtVector3(
+        Player.MainPlayer?.Teleport(new Vector3(
             (float)tbPlayerX.Value,
             (float)tbPlayerY.Value,
             (float)tbPlayerZ.Value
@@ -468,11 +469,15 @@ public partial class MainWindow : Form
 
         if (cbLockTargetCoords.Checked)
         {
-            _plugin.LockedTargetCoordinates[SelectedMonster] = new MtVector3(
+            _plugin.LockedTargetCoordinates[SelectedMonster] = new Vector3(
                 (float)tbTargetX.Value,
                 (float)tbTargetY.Value,
                 (float)tbTargetZ.Value
             );
+        }
+        else
+        {
+            _plugin.LockedTargetCoordinates.TryRemove(SelectedMonster, out _);
         }
     }
 
@@ -515,7 +520,7 @@ public partial class MainWindow : Form
         }
         else
         {
-            _plugin.LockedTargetCoordinates[SelectedMonster] = new MtVector3(
+            _plugin.LockedTargetCoordinates[SelectedMonster] = new Vector3(
                 (float)tbTargetX.Value,
                 (float)tbTargetY.Value,
                 (float)tbTargetZ.Value
@@ -535,7 +540,7 @@ public partial class MainWindow : Form
         }
         else
         {
-            _plugin.LockedTargetCoordinates[SelectedMonster] = new MtVector3(
+            _plugin.LockedTargetCoordinates[SelectedMonster] = new Vector3(
                 (float)tbTargetX.Value,
                 (float)tbTargetY.Value,
                 (float)tbTargetZ.Value
@@ -555,7 +560,7 @@ public partial class MainWindow : Form
         }
         else
         {
-            _plugin.LockedTargetCoordinates[SelectedMonster] = new MtVector3(
+            _plugin.LockedTargetCoordinates[SelectedMonster] = new Vector3(
                 (float)tbTargetX.Value,
                 (float)tbTargetY.Value,
                 (float)tbTargetZ.Value
