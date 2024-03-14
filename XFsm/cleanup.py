@@ -4,6 +4,7 @@ import shutil
 
 KEEPITEMS = [
     "Assets",
+    "lib",
     "XFsm.dll",
     "XFsm.deps.json",
     "XFsm.pdb",

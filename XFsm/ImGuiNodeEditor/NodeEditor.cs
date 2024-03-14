@@ -209,10 +209,20 @@ public static unsafe partial class InternalCalls
     public static partial void SetGroupSize(nint nodeId, in Vector2 size);
     
     [InternalCall]
-    public static partial Vector2 GetNodePosition(nint nodeId);
+    public static partial void GetNodePosition(nint nodeId, out Vector2 outPos);
+    public static Vector2 GetNodePosition(nint nodeId)
+    {
+        GetNodePosition(nodeId, out var pos);
+        return pos;
+    }
     
     [InternalCall]
-    public static partial Vector2 GetNodeSize(nint nodeId);
+    public static partial void GetNodeSize(nint nodeId, out Vector2 outSize);
+    public static Vector2 GetNodeSize(nint nodeId)
+    {
+        GetNodeSize(nodeId, out var size);
+        return size;
+    }
     
     [InternalCall]
     public static partial void CenterNodeOnScreen(nint nodeId);
@@ -507,7 +517,7 @@ public static unsafe partial class InternalCalls
     public static partial void GvFreeContext(nint ctx);
 
     [InternalCall]
-    public static partial void GvLayout(nint ctx, Span<XFsmGvcNode> nodes, int nodeCount, Span<XFsmGvcLink> links, int linkCount);
+    public static partial void GvLayout(nint ctx, Span<XFsmGvcNode> nodes, int nodeCount, Span<XFsmGvcLink> links, int linkCount, string engine);
 
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);

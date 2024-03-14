@@ -5,7 +5,6 @@
 #define GVDLL
 #include <graphviz/gvc.h>
 
-#define IMGUI_DISABLE_OBSOLETE_KEYIO
 #define IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 #define IMGUI_DEFINE_MATH_OPERATORS
 
@@ -37,6 +36,7 @@ struct XFsmGvcNode {
     int Id;
     char* Name;
     float X, Y;
+    float Width, Height;
 };
 
 struct XFsmGvcEdge {
@@ -45,14 +45,24 @@ struct XFsmGvcEdge {
 };
 
 extern "C" __declspec(dllimport) gvplugin_library_t gvplugin_dot_layout_LTX_library;
+extern "C" __declspec(dllimport) gvplugin_library_t gvplugin_neato_layout_LTX_library;
 
 GVC_t* gv_context() {
     const auto gvc = gvContext();
     gvAddLibrary(gvc, &gvplugin_dot_layout_LTX_library);
+    gvAddLibrary(gvc, &gvplugin_neato_layout_LTX_library);
     return gvc;
 }
 
-void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEdge* edges, int edge_count) {
+void get_node_position(ax::NodeEditor::NodeId node, ImVec2* position) {
+    *position = ax::NodeEditor::GetNodePosition(node);
+}
+
+void get_node_size(ax::NodeEditor::NodeId node, ImVec2* size) {
+    *size = ax::NodeEditor::GetNodeSize(node);
+}
+
+void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEdge* edges, int edge_count, const char* engine) {
     agseterr(AGWARN);
     graph_t* g = agopen((char*)"G", Agdirected, nullptr);
 
@@ -60,15 +70,17 @@ void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEd
 
     for (int i = 0; i < node_count; i++) {
         const auto node = agnode(g, nodes[i].Name, 1);
+        agsafeset(node, (char*)"width", std::to_string(nodes[i].Width).c_str(), "1.0");
+        agsafeset(node, (char*)"height", std::to_string(nodes[i].Height).c_str(), "0.5");
         node_map[nodes[i].Id] = node;
     }
-
+    
     for (int i = 0; i < edge_count; i++) {
         auto edge = edges[i];
         agedge(g, node_map[edge.SourceId], node_map[edge.TargetId], nullptr, 1);
     }
 
-    const auto result = gvLayout(gv, g, "dot");
+    const auto result = gvLayout(gv, g, engine);
     if (result != 0) {
         agclose(g);
         return;
@@ -149,8 +161,8 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "EndDelete", ax::NodeEditor::EndDelete };
     *icalls++ = { "SetNodePosition", ax::NodeEditor::SetNodePosition };
     *icalls++ = { "SetGroupSize", ax::NodeEditor::SetGroupSize };
-    *icalls++ = { "GetNodePosition", ax::NodeEditor::GetNodePosition };
-    *icalls++ = { "GetNodeSize", ax::NodeEditor::GetNodeSize };
+    *icalls++ = { "GetNodePosition", get_node_position };
+    *icalls++ = { "GetNodeSize", get_node_size };
     *icalls++ = { "CenterNodeOnScreen", ax::NodeEditor::CenterNodeOnScreen };
     *icalls++ = { "SetNodeZPosition", ax::NodeEditor::SetNodeZPosition };
     *icalls++ = { "GetNodeZPosition", ax::NodeEditor::GetNodeZPosition };

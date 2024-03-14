@@ -40,6 +40,8 @@ public class XFsmEditor
     private bool _showTranslatedNames = false;
     private bool _inputIntWasActive;
 
+    private string _engineText = "dot";
+
     private XFsmPin? _newNodePin = null;
     private XFsmPin? _contextPin = null;
     private XFsmNode? _contextNode = null;
@@ -51,6 +53,7 @@ public class XFsmEditor
     private readonly Random _random = new();
     private float _maxArea = 130f;
 
+    private float _graphvizSizeDivider = 10f;
     private float _rF = 1000f;
     private float _l = 500f;
     private float _sF = 0.001f;
@@ -408,17 +411,18 @@ public class XFsmEditor
         ImGui.SetNextItemWidth(availX * 0.2f);
         ImGui.DragFloat("Spring Force", ref _sF, 0.1f);
 
+        ImGui.InputTextWithHint("##engine", "Engine...", ref _engineText, 50);
+
+        ImGui.SameLine();
+
+        ImGui.DragFloat("Size Divisor", ref _graphvizSizeDivider);
+
         if (ImGui.Button("Apply Layout"))
         {
-            //SpringEmbedder.Layout(
-            //    _nodes, CollectionsMarshal.AsSpan(_links),
-            //    _rF, _l, _sF
-            //);
-
             Span<XFsmGvcNode> gvcNodes = stackalloc XFsmGvcNode[_nodes.Count];
             for (var i = 0; i < _nodes.Count; i++)
             {
-                gvcNodes[i] = new XFsmGvcNode(_nodes[i]);
+                gvcNodes[i] = new XFsmGvcNode(_nodes[i], _graphvizSizeDivider);
             }
 
             Span<XFsmGvcLink> gvcLinks = stackalloc XFsmGvcLink[_links.Count];
@@ -427,7 +431,7 @@ public class XFsmEditor
                 gvcLinks[i] = new XFsmGvcLink(_links[i].Source.Parent.Id, _links[i].Target.Parent.Id);
             }
 
-            NodeEditor.GvLayout(_gvCtx, gvcNodes, gvcNodes.Length, gvcLinks, gvcLinks.Length);
+            NodeEditor.GvLayout(_gvCtx, gvcNodes, gvcNodes.Length, gvcLinks, gvcLinks.Length, _engineText);
 
             for (var i = 0; i < _nodes.Count; i++)
             {
@@ -954,6 +958,9 @@ public class XFsmEditor
         }
 
         builder.End();
+
+        node.Size = NodeEditor.GetNodeSize(node.Id);
+        node.Position = NodeEditor.GetNodePosition(node.Id);
 
         if (highlight)
         {
@@ -1794,11 +1801,12 @@ public class XFsmEditor
 }
 
 [StructLayout(LayoutKind.Sequential)]
-public readonly unsafe struct XFsmGvcNode(XFsmNode node) : IDisposable
+public readonly unsafe struct XFsmGvcNode(XFsmNode node, float divisor) : IDisposable
 {
     public readonly int Id = node.Id;
     public readonly byte* Name = Utf8StringMarshaller.ConvertToUnmanaged(node.Name);
     public readonly Vector2 Position = node.Position;
+    public readonly Vector2 Size = node.Size / divisor;
 
     public void Dispose()
     {
@@ -1819,6 +1827,7 @@ public class XFsmNode
     public int RealId => BackingNode.Id;
     public string Name { get; set; }
     public Vector2 Position { get; set; }
+    public Vector2 Size { get; set; }
 
     public XFsmInputPin InputPin { get; }
     public List<XFsmOutputPin> OutputPins { get; }

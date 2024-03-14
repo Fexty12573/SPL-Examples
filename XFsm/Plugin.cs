@@ -25,14 +25,18 @@ public partial class Plugin : IPlugin
     private string _saveToPath = "";
     private AIFSM? _pendingFsm;
 
-    [LibraryImport("Kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     private static partial nint AddDllDirectory(string dir);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "SetEnvironmentVariableW", StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool SetEnvironmentVariable(string name, string value);
 
     public Plugin()
     {
-        var dllpath = Path.GetFullPath("./nativePC/plugins/CSharp/XFsm");
-        AddDllDirectory(dllpath);
-        Log.Info("Added DLL directory: " + dllpath);
+        AddDllDirectory(Path.GetFullPath("./nativePC/plugins/CSharp/XFsm"));
+        AddDllDirectory(Path.GetFullPath("./nativePC/plugins/CSharp/XFsm/lib"));
+        SetEnvironmentVariable("GVBINDIR", Path.GetFullPath("./nativePC/plugins/CSharp/XFsm/lib/"));
     }
 
     public void OnLoad()

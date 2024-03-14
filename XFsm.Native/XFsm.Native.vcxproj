@@ -139,7 +139,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\Graphviz-10.0.1-win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);cdt.lib;cgraph.lib;gvc.lib;xdot.lib;pathplan.lib;gvplugin_dot_layout.lib;gvplugin_core.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);cdt.lib;cgraph.lib;gvc.lib;xdot.lib;pathplan.lib;gvplugin_dot_layout.lib;gvplugin_neato_layout.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -163,7 +163,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalLibraryDirectories>$(SolutionDir)dependencies\Graphviz-10.0.1-win64\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);cdt.lib;cgraph.lib;gvc.lib;xdot.lib;pathplan.lib;gvplugin_dot_layout.lib;gvplugin_core.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);cdt.lib;cgraph.lib;gvc.lib;xdot.lib;pathplan.lib;gvplugin_dot_layout.lib;gvplugin_neato_layout.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
