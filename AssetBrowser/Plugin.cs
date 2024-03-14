@@ -6,6 +6,7 @@ using SharpPluginLoader.Core.MtTypes;
 using System.IO;
 using System.Text;
 using SharpPluginLoader.Core.Memory;
+using SharpPluginLoader.Core.IO;
 
 namespace AssetBrowser;
 
@@ -25,10 +26,11 @@ public unsafe class Plugin : IPlugin
     private uint _currentDragSourceLength = 0;
     private string _currentDragSourceString = "";
 
+    private bool _assetBrowserOpen = true;
+
     private const float CellSize = 128f;
     private const float CellPadding = 2f;
     private const float ThumbnailSize = 128f;
-
 
     private const string PluginBaseDir = "nativePC/plugins/CSharp/AssetBrowser/";
     private const string AssetDir = "Assets";
@@ -36,10 +38,22 @@ public unsafe class Plugin : IPlugin
     private const string RootDirectory = "nativePC";
     private static readonly string RootDirectoryAbsolute = Path.GetFullPath(RootDirectory);
 
+    private const string OpenKeybind = "AssetBrowser:Open";
+
     public void OnLoad()
     {
         _baseDirectory = new DirectoryInfo("nativePC");
         _currentDirectory = _baseDirectory;
+
+        KeyBindings.AddKeybind(OpenKeybind, new Keybind<Key>(Key.A, [Key.LeftShift, Key.LeftAlt]));
+    }
+
+    public void OnUpdate(float deltaTime)
+    {
+        if (KeyBindings.IsPressed(OpenKeybind))
+        {
+            _assetBrowserOpen = !_assetBrowserOpen;
+        }
     }
 
     public void OnImGuiFreeRender()
@@ -50,10 +64,10 @@ public unsafe class Plugin : IPlugin
             _firstRender = false;
         }
 
-        if (!Renderer.MenuShown)
+        if (!Renderer.MenuShown || !_assetBrowserOpen)
             return;
 
-        if (!ImGui.Begin("Asset Browser", ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar))
+        if (!ImGui.Begin("Asset Browser", ref _assetBrowserOpen, ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar))
         {
             ImGui.End();
             return;
