@@ -539,6 +539,10 @@ public static unsafe partial class InternalCalls
     public static partial void ReloadPlayerFsm(nint humanController);
     public static void ReloadPlayerFsm(Player player) => ReloadPlayerFsm(player.Get<nint>(0x12608));
 
+    [InternalCall(Pattern = "48 89 78 E0 48 8D B1 B0 76 00 00 4C 89 68 D8 45 33 C0", Offset = -20)]
+    public static partial void ChangeWeapon(nint player, WeaponType weaponType, int weaponId);
+    public static void ChangeWeapon(WeaponType weaponType, int weaponId) => ChangeWeapon(Player.MainPlayer!.Instance, weaponType, weaponId);
+
     public static void RegisterResource(Resource resource)
     {
         var sMhResource = ResourceManager.SingletonInstance;

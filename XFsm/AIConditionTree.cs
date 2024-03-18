@@ -6,11 +6,83 @@ namespace XFsm;
 
 public class AIConditionTree : MtObject
 {
-    public AIConditionTree(nint instance) : base(instance) { }
-    public AIConditionTree() { }
+    public AIConditionTree(nint instance) : base(instance)
+    {
+        _treeInfoCapacity = TreeInfoCount;
+    }
+    public AIConditionTree() { _treeInfoCapacity = 0; }
+
+    private int _treeInfoCapacity;
 
     public ref int TreeInfoCount => ref GetRef<int>(0xA8);
-    public ObjectArray<AIConditionTreeInfo> TreeList => new(Get<nint>(0xB0), TreeInfoCount);
+
+    public ObjectArray<AIConditionTreeInfo> TreeList
+    {
+        get => new(Get<nint>(0xB0), TreeInfoCount);
+        set
+        {
+            Set(0xB0, value.Address);
+            TreeInfoCount = value.Count;
+        }
+    }
+
+    public unsafe void AddTreeInfo(AIConditionTreeInfo treeInfo, MtAllocator? allocator = null)
+    {
+        if (TreeInfoCount == _treeInfoCapacity)
+        {
+            allocator ??= GetAllocator();
+
+            _treeInfoCapacity += 8;
+            var newTreeList = new ObjectArray<AIConditionTreeInfo>(
+                allocator.Alloc(8 * _treeInfoCapacity),
+                TreeInfoCount + 1
+            );
+
+            NativeMemory.Copy(TreeList.Pointer, newTreeList.Pointer, (nuint)TreeInfoCount * 8);
+            newTreeList[TreeInfoCount] = treeInfo;
+
+            allocator.Free(TreeList.Address);
+            TreeList = newTreeList;
+        }
+        else
+        {
+            TreeList[TreeInfoCount] = treeInfo;
+            TreeInfoCount++;
+        }
+    }
+
+    public AIConditionTreeInfo AddTreeInfo(string? name = null)
+    {
+        var treeInfo = MtDti.Find("rAIConditionTree::TreeInfo")?.CreateInstance<AIConditionTreeInfo>()
+            ?? throw new NullReferenceException("Failed to create AIConditionTreeInfo instance");
+
+        if (name is not null)
+            treeInfo.Name.Name = name;
+
+        AddTreeInfo(treeInfo);
+        return treeInfo;
+    }
+
+    public void RemoveTreeInfo(int index)
+    {
+        if (index < 0 || index >= TreeInfoCount)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        var treeList = TreeList; // Avoid multiple instatiation of ObjectArray
+        treeList[index].Destroy(true);
+
+        for (var i = index; i < TreeInfoCount - 1; i++)
+        {
+            treeList[i] = treeList[i + 1];
+        }
+
+        TreeInfoCount--;
+    }
+
+    private static MtAllocator GetAllocator()
+    {
+        return InternalCalls.GetAllocator(MtDti.Find("rAIConditionTree"));
+    }
 }
 
 public class AIConditionTreeInfo : MtObject
@@ -21,7 +93,7 @@ public class AIConditionTreeInfo : MtObject
     public ref AIDEnum Name => ref GetRefInline<AIDEnum>(0x8);
     public AIConditionTreeNode? RootNode
     {
-        get => new(Get<nint>(0x20));
+        get => Get<nint>(0x20) != 0 ? new AIConditionTreeNode(Get<nint>(0x20)) : null;
         set
         {
             RootNode?.Destroy(true);
@@ -117,7 +189,7 @@ public class AIConditionTreeNode : MtObject
                 ptr => new AIConditionTreeNode(ptr)
             );
 
-            NativeMemory.Copy(newChildren.Pointer, Children.Pointer, (nuint)ChildCount * 8);
+            NativeMemory.Copy(Children.Pointer, newChildren.Pointer, (nuint)ChildCount * 8);
             newChildren[ChildCount] = node;
 
             allocator.Free(Children.Address);
@@ -336,6 +408,7 @@ public unsafe struct AIDEnum
                 InternalCalls.MtStringAssign((nint)ptr, value);
         }
     }
+    public bool HasName => NamePtr != null;
 }
 
 public enum OperatorType : int

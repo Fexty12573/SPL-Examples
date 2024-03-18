@@ -13,9 +13,9 @@ public class AIFSM : Resource
 
     public unsafe string OwnerObjectName => GetPtr<MtString>(0xA8)->GetString();
 
-    public AIFSMCluster? RootCluster => GetObject<AIFSMCluster>(0xB0);
+    public AIFSMCluster? RootCluster => Get<nint>(0xB0) != 0 ? new AIFSMCluster(Get<nint>(0xB0)) : null;
 
-    public AIConditionTree? ConditionTree => GetObject<AIConditionTree>(0xB8);
+    public AIConditionTree? ConditionTree => Get<nint>(0xB8) != 0 ? new AIConditionTree(Get<nint>(0xB8)) : null;
 }
 
 public class AIFSMCluster : AIFSMObject
@@ -55,7 +55,7 @@ public class AIFSMCluster : AIFSMObject
                 ptr => new AIFSMNode(ptr)
             );
             
-            NativeMemory.Copy(newNodes.Pointer, Nodes.Pointer, (nuint)NodeCount * 8);
+            NativeMemory.Copy(Nodes.Pointer, newNodes.Pointer, (nuint)NodeCount * 8);
             newNodes[NodeCount] = node;
 
             allocator.Free(Nodes.Address);
@@ -173,7 +173,7 @@ public class AIFSMNode : AIFSMObject
                 LinkCount + 1
             );
 
-            NativeMemory.Copy(newLinks.Pointer, Links.Pointer, (nuint)LinkCount * 8);
+            NativeMemory.Copy(Links.Pointer, newLinks.Pointer, (nuint)LinkCount * 8);
             newLinks[LinkCount] = link;
 
             allocator.Free(Links.Address);
@@ -237,7 +237,7 @@ public class AIFSMNode : AIFSMObject
                 ProcessCount + 1
             );
 
-            NativeMemory.Copy(newProcesses.Pointer, Processes.Pointer, (nuint)ProcessCount * 8);
+            NativeMemory.Copy(Processes.Pointer, newProcesses.Pointer, (nuint)ProcessCount * 8);
             newProcesses[ProcessCount] = process;
 
             allocator.Free(Processes.Address);

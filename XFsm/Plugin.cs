@@ -5,6 +5,7 @@ using System.Text;
 using SharpPluginLoader.Core;
 using ImGuiNET;
 using Microsoft.Win32;
+using SharpPluginLoader.Core.Components;
 using SharpPluginLoader.Core.IO;
 using SharpPluginLoader.Core.Memory;
 using SharpPluginLoader.Core.Rendering;
@@ -120,8 +121,6 @@ public partial class Plugin : IPlugin
 
         if (_editor.HasFsm)
         {
-            ImGui.SameLine();
-
             if (ImGui.Button("Save"))
             {
                 _editor.ApplyEditorToObject();
@@ -170,9 +169,9 @@ public partial class Plugin : IPlugin
                     }
                 }
             }
-        }
 
-        ImGui.SameLine();
+            ImGui.SameLine();
+        }
 
         if (ImGui.Button("Fix..."))
         {
@@ -229,10 +228,22 @@ public partial class Plugin : IPlugin
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Reload Player FSM") && Player.MainPlayer is not null)
+        var player = Player.MainPlayer;
+        if (ImGui.Button("Reload Player FSM") && player is not null)
         {
             _editor.ApplyEditorToObject();
-            InternalCalls.ReloadPlayerFsm(Player.MainPlayer);
+            var currentWeaponType = player.CurrentWeaponType;
+            var currentWeaponId = player.CurrentWeapon!.Get<int>(0x9FC);
+            var newWeaponType = currentWeaponType == WeaponType.GreatSword ? WeaponType.LongSword : WeaponType.GreatSword;
+            
+            InternalCalls.ChangeWeapon(newWeaponType, 0);
+            InternalCalls.ChangeWeapon(currentWeaponType, currentWeaponId);
+        }
+
+        if (ImGui.BeginItemTooltip())
+        {
+            ImGui.Text("This will force-reload the player's FSM. It might result in a small freeze.");
+            ImGui.EndTooltip();
         }
 
         _editor.Render();
