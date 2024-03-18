@@ -138,12 +138,10 @@ public unsafe class Plugin : IPlugin
                         const float paddingForOutline = 2f;
                         var scrollbarOffset = 20f + ImGui.GetStyle().ScrollbarSize;
                         var panelWidth = avail.X - scrollbarOffset;
-                        var cellSize = CellSize + paddingForOutline + CellPadding;
-                        int columns = (int)(panelWidth / cellSize);
+                        const float cellSize = CellSize + paddingForOutline + CellPadding;
+                        var columns = (int)(panelWidth / cellSize);
 
-                        if (columns < 1)
-                            columns = 1;
-
+                        if (columns > 0)
                         {
                             const float rowSpacing = 12f;
                             using var spacing = new ScopedStyle(
