@@ -14,6 +14,8 @@ using SharpPluginLoader.Core.Rendering;
 using System.Reflection;
 using System.Runtime.InteropServices.Marshalling;
 using SharpPluginLoader.Core.Entities;
+using System.Drawing;
+using System.Diagnostics;
 
 namespace XFsm;
 
@@ -66,6 +68,9 @@ public class XFsmEditor
 
     private readonly Dictionary<nint, string> _translatedNodeNames = [];
     private readonly Dictionary<nint, string> _translatedLinkNames = [];
+
+    private readonly List<(string Name, PropType Type)> _questFsmVariables = [];
+    private readonly Dictionary<string, XFsmProcessDescriptor> _questFsmProcesses = [];
 
     #region Allocators
 
@@ -213,11 +218,53 @@ public class XFsmEditor
             Ensure.NotNull(_actionSetDti);
             Ensure.NotNull(_linkMotionDti);
         }
+        else
+        {
+            var tempObjectDti = MtDti.Find(fsm.OwnerObjectName);
+            if (tempObjectDti is null)
+            {
+                ImGuiExtensions.NotificationError($"Invalid Owner Object: {fsm.OwnerObjectName}");
+                Log.Error($"Invalid Owner Object: {fsm.OwnerObjectName}");
+                return;
+            }
+
+            var tempObject = tempObjectDti.CreateInstance<MtObject>();
+            if (tempObject.Instance == 0)
+            {
+                ImGuiExtensions.NotificationError($"Failed to create instance of {fsm.OwnerObjectName}");
+                Log.Error($"Failed to create instance of {fsm.OwnerObjectName}");
+                return;
+            }
+
+            _questFsmVariables.Clear();
+
+            var properties = tempObject.GetProperties();
+            foreach (var prop in properties)
+            {
+                _questFsmVariables.Add((prop.HashName, prop.Type));
+            }
+
+            unsafe
+            {
+                _questFsmProcesses.Clear();
+
+                var functions = new FsmFunctionList(
+                    new NativeFunction<nint, nint>(tempObject.GetVirtualFunction(5)).Invoke(tempObject.Instance)
+                );
+
+                foreach (var function in functions)
+                {
+                    _questFsmProcesses.Add(function.Name, new XFsmProcessDescriptor(function.Name, function.ParamDti));
+                }
+            }
+            
+            tempObject.Destroy(true);
+        }
 
         // Create nodes
         foreach (var node in fsm.RootCluster.Nodes)
         {
-            _nodes.Add(_isWeaponFsm ? new XFsmWeaponNode(node) : new XFsmNode(node));
+            _nodes.Add(_isWeaponFsm ? new XFsmWeaponNode(node) : new XFsmQuestNode(node, _questFsmProcesses));
         }
 
         // Create links
@@ -1168,6 +1215,7 @@ public class XFsmEditor
         }
     }
 
+    private int _processInsertIndex = -1;
     private void ShowNodeProperties(XFsmNode node)
     {
         ImGui.Text($"Node Id: {node.RealId}");
@@ -1259,10 +1307,363 @@ public class XFsmEditor
         }
         else
         {
-            // TODO: Show properties for non-weapon FSM nodes
+            var indicesToSwap = (-1, -1);
+            XFsmNodeProcess? processToRemove = null;
+            var qnode = (XFsmQuestNode)node;
+            foreach (var process in qnode.Processes)
+            {
+                ImGui.PushID(process.BackingProcess.Instance);
+
+                if (ImGui.ArrowButton("##up", ImGuiDir.Up))
+                {
+                    var index = qnode.Processes.IndexOf(process);
+                    indicesToSwap = (index - 1, index);
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.ArrowButton("##down", ImGuiDir.Down))
+                {
+                    var index = qnode.Processes.IndexOf(process);
+                    indicesToSwap = (index, index + 1);
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button(FA6.X))
+                {
+                    processToRemove = process;
+                }
+
+                ImGui.SameLine();
+
+                var open = ImGui.CollapsingHeader(process.Descriptor.Name);
+
+                if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                {
+                    ImGui.OpenPopup("Process Context Menu");
+                }
+
+                if (ImGui.BeginPopup("Process Context Menu"))
+                {
+                    if (ImGui.MenuItem("Shift Up"))
+                    {
+                        var index = qnode.Processes.IndexOf(process);
+                        indicesToSwap = (index - 1, index);
+                    }
+                    if (ImGui.MenuItem("Shift Down"))
+                    {
+                        var index = qnode.Processes.IndexOf(process);
+                        indicesToSwap = (index, index + 1);
+                    }
+                    if (ImGui.MenuItem("Remove"))
+                    {
+                        processToRemove = process;
+                    }
+                    if (ImGui.MenuItem("Insert Process Before"))
+                    {
+                        _processInsertIndex = qnode.Processes.IndexOf(process);
+                        ImGui.OpenPopup("New Process");
+                    }
+                    if (ImGui.MenuItem("Insert Process After"))
+                    {
+                        _processInsertIndex = qnode.Processes.IndexOf(process) + 1;
+                        ImGui.OpenPopup("New Process");
+                    }
+
+                    ImGui.EndPopup();
+                }
+
+                if (ImGui.BeginPopup("New Process"))
+                {
+                    if (ImGui.BeginCombo("Type", "Select a type..."))
+                    {
+                        foreach (var (procName, descriptor) in _questFsmProcesses)
+                        {
+                            if (ImGui.Selectable(descriptor.Name))
+                            {
+                                // TODO: Add new process
+                            }
+                        }
+
+                        ImGui.EndCombo();
+                    }
+
+                    ImGui.EndPopup();
+                }
+
+                if (open)
+                {
+                    if (ImGui.BeginCombo("Type", process.Descriptor.Name))
+                    {
+                        foreach (var (procName, descriptor) in _questFsmProcesses)
+                        {
+                            var isSelected = procName == process.Descriptor.Name;
+                            if (ImGui.Selectable(descriptor.Name, isSelected))
+                            {
+                                process.ChangeKind(descriptor);
+                            }
+
+                            if (isSelected)
+                            {
+                                ImGui.SetItemDefaultFocus();
+                            }
+                        }
+
+                        ImGui.EndCombo();
+                    }
+
+                    name = process.BackingProcess.ContainerName;
+                    if (ImGui.InputText("Container Name", ref name, 260))
+                    {
+                        process.BackingProcess.ContainerName = name;
+                    }
+
+                    name = process.BackingProcess.CategoryName;
+                    if (ImGui.InputText("Category Name", ref name, 260))
+                    {
+                        process.BackingProcess.CategoryName = name;
+                    }
+
+                    if (ImGui.TreeNode("Properties"))
+                    {
+                        if (process.Parameter is null)
+                        {
+                            ImGui.Text("No parameter found");
+                            if (ImGui.Button("Add Parameter"))
+                            {
+                                process.Parameter = process.Descriptor.ParamDti.CreateInstance<MtObject>();
+                            }
+                        }
+
+                        foreach (var field in process.Descriptor.ParamFields)
+                        {
+                            DisplayField(field, process.Parameter);
+                        }
+
+                        ImGui.TreePop();
+                    }
+                }
+
+                ImGui.PopID();
+            }
+
+            if (indicesToSwap != (-1, -1))
+            {
+                qnode.Processes.Reverse(indicesToSwap.Item1, 2);
+                qnode.BackingNode.Processes.Swap(indicesToSwap.Item1, indicesToSwap.Item2);
+            }
+
+            if (processToRemove is not null)
+            {
+                qnode.RemoveProcess(processToRemove);
+            }
         }
 
+        return;
 
+        static unsafe void DisplayField(XFsmProcessParamField field, MtObject? param)
+        {
+            if (param is null)
+                return;
+
+            switch (field.Type)
+            {
+                case PropType.Undefined:
+                    break;
+                case PropType.Class:
+                case PropType.ClassRef:
+                    ImGui.Text(field.Name);
+                    ImGui.Indent();
+                    foreach (var subField in field.Fields)
+                    {
+                        DisplayField(subField, field.GetValue(param));
+                    }
+                    ImGui.Unindent();
+                    break;
+                case PropType.Bool:
+                    ImGui.Checkbox(field.Name, ref field.GetValue<bool>(param));
+                    break;
+                case PropType.U8:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<byte>(param));
+                    break;
+                case PropType.U16:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<ushort>(param));
+                    break;
+                case PropType.U32:
+                    if (field.IsProperty)
+                    {
+                        var value = new NativeFunction<nint, uint>(field.Offset).Invoke(param.Instance);
+                        if (ImGuiExtensions.InputScalar(field.Name, ref value))
+                        {
+                            new NativeAction<nint, uint>(field.Set).Invoke(param.Instance, value);
+                        }
+                    }
+                    else
+                    {
+                        ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<uint>(param));
+                    }
+                    break;
+                case PropType.U64:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<long>(param));
+                    break;
+                case PropType.S8:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<sbyte>(param));
+                    break;
+                case PropType.S16:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<short>(param));
+                    break;
+                case PropType.S32:
+                    ImGui.InputInt(field.Name, ref field.GetValue<int>(param));
+                    break;
+                case PropType.S64:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<long>(param));
+                    break;
+                case PropType.F32:
+                    ImGui.DragFloat(field.Name, ref field.GetValue<float>(param));
+                    break;
+                case PropType.F64:
+                    ImGui.DragScalar(field.Name, ImGuiDataType.Double, MemoryUtil.AddressOf(ref field.GetValue<double>(param)));
+                    break;
+                case PropType.String:
+                    if (field.IsProperty)
+                    {
+                        var str = new NativeFunction<nint, nint>(field.Offset).Invoke(param.Instance);
+                        ImGui.InputText(field.Name, str, 12);
+                    }
+                    else
+                    {
+                        var strPtr = param.GetPtr<MtString>(field.Offset);
+                        var str = strPtr->GetString();
+                        if (ImGui.InputText(field.Name, ref str, 0x50))
+                        {
+                            NodeEditor.MtStringAssign(param.Instance + field.Offset, str);
+                        }
+                    }
+                    break;
+                case PropType.Color:
+                    var color = field.GetValue<MtColor>(param).ToVector4();
+                    ImGui.ColorEdit4(field.Name, ref color);
+                    field.GetValue<MtColor>(param) = (MtColor)color;
+                    break;
+                case PropType.Point:
+                    ImGui.InputInt2(field.Name, ref field.GetValue<int>(param));
+                    break;
+                case PropType.Size:
+                    ImGui.InputInt2(field.Name, ref field.GetValue<int>(param));
+                    break;
+                case PropType.Rect:
+                    ImGui.InputInt4(field.Name, ref field.GetValue<int>(param));
+                    break;
+                case PropType.Float4X4:
+                case PropType.Matrix44:
+                    ImGui.DragFloat4($"{field.Name}##0", ref param.GetRef<Vector4>(field.Offset + 00));
+                    ImGui.DragFloat4($"{field.Name}##1", ref param.GetRef<Vector4>(field.Offset + 16));
+                    ImGui.DragFloat4($"{field.Name}##2", ref param.GetRef<Vector4>(field.Offset + 32));
+                    ImGui.DragFloat4($"{field.Name}##3", ref param.GetRef<Vector4>(field.Offset + 48));
+                    break;
+                case PropType.Vector3:
+                    ImGui.DragFloat3(field.Name, ref field.GetValue<Vector3>(param));
+                    break;
+                case PropType.Vector4:
+                    ImGui.DragFloat4(field.Name, ref field.GetValue<Vector4>(param));
+                    break;
+                case PropType.Quaternion:
+                    ImGui.DragFloat4(field.Name, ref field.GetValue<Vector4>(param));
+                    break;
+                case PropType.Property:
+                case PropType.Event:
+                case PropType.Group:
+                case PropType.PageBegin:
+                case PropType.PageEnd:
+                case PropType.Event32:
+                case PropType.Array:
+                case PropType.PropertyList:
+                case PropType.GroupEnd:
+                    ImGui.Text($"{field.Name} (Unsupported)");
+                    break;
+                case PropType.CString:
+                    break;
+                case PropType.Time:
+                    ImGuiExtensions.InputScalar(field.Name, ref field.GetValue<long>(param));
+                    break;
+                case PropType.Float2:
+                    ImGui.DragFloat2(field.Name, ref field.GetValue<Vector2>(param));
+                    break;
+                case PropType.Float3:
+                    ImGui.DragFloat3(field.Name, ref field.GetValue<Vector3>(param));
+                    break;
+                case PropType.Float4:
+                    ImGui.DragFloat4(field.Name, ref field.GetValue<Vector4>(param));
+                    break;
+                case PropType.Float3X3:
+                    ImGui.DragFloat3($"{field.Name}##0", ref param.GetRef<Vector3>(field.Offset));
+                    ImGui.DragFloat3($"{field.Name}##1", ref param.GetRef<Vector3>(field.Offset + 12));
+                    ImGui.DragFloat3($"{field.Name}##2", ref param.GetRef<Vector3>(field.Offset + 24));
+                    break;
+                case PropType.Float4X3:
+                    ImGui.DragFloat4($"{field.Name}##0", ref param.GetRef<Vector4>(field.Offset));
+                    ImGui.DragFloat4($"{field.Name}##1", ref param.GetRef<Vector4>(field.Offset + 16));
+                    ImGui.DragFloat4($"{field.Name}##2", ref param.GetRef<Vector4>(field.Offset + 32));
+                    break;
+                case PropType.Easecurve:
+                    ImGui.DragFloat2(field.Name, ref field.GetValue<Vector2>(param));
+                    break;
+                case PropType.Line:
+                    ref var line = ref field.GetValue<MtLine>(param);
+                    ImGui.DragFloat3($"{field.Name} Origin", ref line.Point);
+                    ImGui.DragFloat3($"{field.Name} Direction", ref line.Direction);
+                    break;
+                case PropType.Linesegment:
+                    ref var lineSegment = ref field.GetValue<MtLineSegment>(param);
+                    ImGui.DragFloat3($"{field.Name} Start", ref lineSegment.Point1);
+                    ImGui.DragFloat3($"{field.Name} End", ref lineSegment.Point2);
+                    break;
+                case PropType.Ray:
+                case PropType.Plane:
+                case PropType.Sphere:
+                case PropType.Capsule:
+                case PropType.Aabb:
+                case PropType.Obb:
+                case PropType.Cylinder:
+                case PropType.Triangle:
+                case PropType.Cone:
+                case PropType.Torus:
+                case PropType.Ellipsoid:
+                case PropType.Range:
+                case PropType.RangeF:
+                case PropType.RangeU16:
+                case PropType.Hermitecurve:
+                case PropType.Enumlist:
+                case PropType.Float3X4:
+                case PropType.LineSegment4:
+                case PropType.Aabb4:
+                case PropType.Oscillator:
+                case PropType.Variable:
+                case PropType.Rect3dXz:
+                case PropType.Rect3d:
+                case PropType.Rect3dCollision:
+                case PropType.PlaneXz:
+                case PropType.RayY:
+                case PropType.PointF:
+                case PropType.SizeF:
+                case PropType.RectF:
+                case PropType.Event64:
+                case PropType.Bool2:
+                case PropType.End:
+                    ImGui.Text($"{field.Type} {field.Name} (Unsupported)");
+                    break;
+
+                case PropType.Vector2:
+                    ImGui.DragFloat2(field.Name, ref field.GetValue<Vector2>(param));
+                    break;
+                case PropType.Matrix33:
+                    ImGui.DragFloat3($"{field.Name}##0", ref param.GetRef<Vector3>(field.Offset));
+                    ImGui.DragFloat3($"{field.Name}##1", ref param.GetRef<Vector3>(field.Offset + 12));
+                    ImGui.DragFloat3($"{field.Name}##2", ref param.GetRef<Vector3>(field.Offset + 24));
+                    break;
+            }
+        }
     }
 
     private void ShowLinkProperties(XFsmLink link)
@@ -2020,6 +2421,60 @@ public class XFsmWeaponNode : XFsmNode
     }
 }
 
+public class XFsmNodeProcess(AIFSMNodeProcess process, XFsmProcessDescriptor xfsmProcess)
+{
+    public AIFSMNodeProcess BackingProcess { get; } = process;
+    public XFsmProcessDescriptor Descriptor { get; private set; } = xfsmProcess;
+    private MtObject? _parameter = process.Parameter;
+    public MtObject? Parameter 
+    {
+        get => _parameter;
+        set
+        {
+            _parameter = value;
+            BackingProcess.Parameter = value;
+        }
+    }
+
+    public void ChangeKind(XFsmProcessDescriptor descriptor)
+    {
+        if (descriptor.Name == Descriptor.Name)
+            return;
+
+        Descriptor = descriptor;
+        Parameter?.Destroy(true);
+        Parameter = descriptor.ParamDti.CreateInstance<MtObject>();
+        BackingProcess.ContainerName = descriptor.Name;
+    }
+}
+
+public class XFsmQuestNode : XFsmNode
+{
+    public List<XFsmNodeProcess> Processes { get; }
+
+    public XFsmNodeProcess AddProcess(XFsmProcessDescriptor descriptor)
+    {
+        var fsmProcess = BackingNode.AddProcess(descriptor.Name);
+        var nodeProcess = new XFsmNodeProcess(fsmProcess, descriptor)
+        {
+            Parameter = descriptor.ParamDti.CreateInstance<MtObject>()
+        };
+        Processes.Add(nodeProcess);
+        return nodeProcess;
+    }
+
+    public void RemoveProcess(XFsmNodeProcess process)
+    {
+        Processes.Remove(process);
+        BackingNode.RemoveProcess(process.BackingProcess);
+    }
+
+    public XFsmQuestNode(AIFSMNode node, IReadOnlyDictionary<string, XFsmProcessDescriptor> allowedProcesses) : base(node)
+    {
+        Processes = node.Processes.Select(p => new XFsmNodeProcess(p, allowedProcesses[p.ContainerName])).ToList();
+    }
+}
+
 public class XFsmPin(string name, int id)
 {
     public int Id { get; set; } = id;
@@ -2054,6 +2509,78 @@ public class XFsmConditionTreeInfo(AIConditionTreeInfo info, int treeIndex)
     public AIConditionTreeNode? RootNode { get; set; } = info.RootNode;
     public ConditionTreeNodeType Type { get; } = info.RootNode?.Type ?? ConditionTreeNodeType.None;
     public int TreeIndex { get; } = treeIndex;
+}
+
+public class XFsmProcessDescriptor
+{
+    public string Name { get; }
+    public MtDti ParamDti { get; }
+    public IReadOnlyList<XFsmProcessParamField> ParamFields { get; }
+
+    public XFsmProcessDescriptor(string name, MtDti paramDti)
+    {
+        Name = name;
+        ParamDti = paramDti;
+        
+        var paramProps = paramDti.GetProperties();
+        ParamFields = paramProps.Select(p => new XFsmProcessParamField(p)).ToList();
+    }
+}
+
+public class XFsmProcessParamField
+{
+    public string Name { get; }
+    public string ExeName { get; }
+    public PropType Type { get; }
+    public nint Offset { get; }
+    public nint Set { get; }
+    public bool IsProperty { get; }
+    public IReadOnlyList<XFsmProcessParamField> Fields { get; }
+
+    public unsafe ref T GetValue<T>(MtObject obj) where T : unmanaged
+    {
+        Ensure.IsTrue(!IsProperty);
+        return ref obj.GetRef<T>(Offset);
+    }
+
+    public unsafe MtObject? GetValue(MtObject obj)
+    {
+        Ensure.IsTrue(!IsProperty);
+        return Type switch
+        {
+            PropType.Class => new MtObject(obj.Instance + Offset),
+            PropType.ClassRef => obj.GetObject<MtObject>(Offset),
+        };
+    }
+
+    public XFsmProcessParamField(MtProperty property)
+    {
+        Name = property.HashName;
+        ExeName = property.Name;
+        Type = property.Type;
+
+        if (property.IsProperty)
+        {
+            Offset = property.Get;
+            Set = property.Set;
+            IsProperty = true;
+        }
+        else
+        {
+            Offset = property.Get - (property.Owner?.Instance ?? 0);
+            IsProperty = false;
+        }
+
+        if (property.Type is PropType.Class or PropType.ClassRef)
+        {
+            var obj = new MtObject(property.Get);
+            Fields = obj.GetProperties().Select(p => new XFsmProcessParamField(p)).ToList();
+        }
+        else
+        {
+            Fields = [];
+        }
+    }
 }
 
 public enum WeaponFsmNodeType

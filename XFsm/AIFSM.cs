@@ -261,6 +261,34 @@ public class AIFSMNode : AIFSMObject
         return process;
     }
 
+    public unsafe void RemoveProcess(int index)
+    {
+        if (index < 0 || index >= ProcessCount)
+        {
+            throw new IndexOutOfRangeException("Process index out of range");
+        }
+
+        Processes[index].Destroy(true);
+        for (var i = index; i < ProcessCount - 1; i++)
+        {
+            Processes.Pointer[i] = Processes.Pointer[i + 1];
+        }
+
+        ProcessCount--;
+    }
+
+    public unsafe void RemoveProcess(AIFSMNodeProcess process)
+    {
+        for (var i = 0; i < ProcessCount; i++)
+        {
+            if (Processes.Pointer[i] == process.Instance)
+            {
+                RemoveProcess(i);
+                return;
+            }
+        }
+    }
+
     public static MtAllocator GetAllocator()
     {
         return InternalCalls.GetAllocator(MtDti.Find("cAIFSMNode"));
