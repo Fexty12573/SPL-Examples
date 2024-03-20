@@ -178,11 +178,17 @@
     <ClCompile Include="..\dependencies\imgui\imgui_stacklayout.cpp" />
     <ClCompile Include="..\dependencies\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\dependencies\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\dependencies\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="MtPropertyList.h" />
+    <ClCompile Include="PropertyDisplay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\drawing.h" />
     <ClInclude Include="..\dependencies\imgui-node-editor\examples\blueprints-example\utilities\widgets.h" />
+    <ClInclude Include="MtObject.h" />
+    <ClInclude Include="MtProperty.h" />
+    <ClInclude Include="PropertyDisplay.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

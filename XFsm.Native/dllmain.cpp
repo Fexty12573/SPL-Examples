@@ -1,6 +1,7 @@
 
 #include "SPL/InternalCall.h"
 #include "renderdoc_app.h"
+#include "PropertyDisplay.h"
 
 #define GVDLL
 #include <graphviz/gvc.h>
@@ -96,7 +97,7 @@ void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEd
 }
 
 SPL_INTERNAL_CALL int get_internal_call_count() {
-    return 137;
+    return 139;
 }
 
 SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
@@ -242,6 +243,8 @@ SPL_INTERNAL_CALL void collect_internal_calls(SPLNative::InternalCall* icalls) {
     *icalls++ = { "GvContext", gv_context };
     *icalls++ = { "GvFreeContext", gvFreeContext };
     *icalls++ = { "GvLayout", layout_nodes };
+    *icalls++ = { "SetCallbacks", set_callbacks };
+    *icalls++ = { "DisplayMtObject", display_imgui_properties };
 }
 
 
@@ -344,3 +347,6 @@ bool inject_render_doc(const wchar_t* dll_path) {
 
     return true;
 }
+
+
+

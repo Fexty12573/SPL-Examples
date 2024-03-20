@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SharpPluginLoader.Core.Resources;
 using SharpPluginLoader.Core.Entities;
+using SharpPluginLoader.Core.Memory;
 
 namespace XFsm.ImGuiNodeEditor;
 
@@ -518,6 +519,19 @@ public static unsafe partial class InternalCalls
 
     [InternalCall]
     public static partial void GvLayout(nint ctx, Span<XFsmGvcNode> nodes, int nodeCount, Span<XFsmGvcLink> links, int linkCount, string engine);
+
+    [InternalCall]
+    public static partial void SetCallbacks(void* propListCtor, void* mtStringAssign);
+
+    public static void SetCallbacks()
+    {
+        var pattern = Pattern.FromString("48 89 01 33 c0 48 89 41 08 48 89 41 10 89 41 18 48 8b c1 c3");
+        var ctor = PatternScanner.Scan(pattern).Last();
+        SetCallbacks(_MtStringAssignPtr, (void*)ctor);
+    }
+
+    [InternalCall]
+    public static partial void DisplayMtObject(nint obj);
 
     [InternalCall(Pattern = "48 c1 e8 17 83 e0 3f 48 8b 04 c1 c3", Offset = -10, Options = InternalCallOptions.Unsafe)]
     public static partial nint GetAllocator(nint dti);
