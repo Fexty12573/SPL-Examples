@@ -1,5 +1,7 @@
 #pragma once
 
+#include <format>
+
 #include "MtObject.h"
 
 #include <vector>
@@ -91,11 +93,11 @@ class MtProperty {
     const char* m_name;
     const char* m_comment;
     uint32_t m_type : 12;
-    uint32_t : 8;
+    uint32_t : 5;
     uint32_t m_is_array : 1;
     uint32_t : 1;
     uint32_t m_is_property : 1;
-    uint32_t : 9;
+    uint32_t : 12;
     MtObject* m_owner;
     union {
         void* m_data;
@@ -109,8 +111,8 @@ class MtProperty {
     void* m_set;
     void* m_set_count;
     uint32_t m_index;
-    MtProperty* m_next;
     MtProperty* m_prev;
+    MtProperty* m_next;
 
 public:
     const char* name() const { return m_name; }
@@ -125,6 +127,12 @@ public:
     void* array() const { return m_array; }
     uint32_t count() const { return m_count; }
     
+    std::string display_name() const { 
+        return m_comment
+            ? std::format("{} ({})", m_name, m_comment).c_str()
+            : m_name;
+    }
+
     template<typename FuncT> FuncT* getter() const { return reinterpret_cast<FuncT*>(m_get); }
     template<typename FuncT> FuncT* count_getter() const { return reinterpret_cast<FuncT*>(m_get_count); }
     template<typename FuncT> FuncT* setter() const { return reinterpret_cast<FuncT*>(m_set); }
@@ -132,8 +140,10 @@ public:
 
     template<typename T> T get() const { return getter<T(MtObject*)>()(m_owner); }
     template<typename T> void set(T value) const { setter<void(MtObject*, T)>()(m_owner, value); }
-    template<typename T> T get(int index) const { return count_getter<T(MtObject*, int)>()(m_owner, index); }
-    template<typename T> void set(int index, T value) const { count_setter<void(MtObject*, int, T)>()(m_owner, index, value); }
+    template<typename T> T get(int index) const { return getter<T(MtObject*, int)>()(m_owner, index); }
+    template<typename T> void set(int index, T value) const { setter<void(MtObject*, int, T)>()(m_owner, index, value); }
+    uint32_t get_count() const { return count_getter<uint32_t(MtObject*)>()(m_owner); }
+    void set_count(uint32_t value) const { count_setter<void(MtObject*, uint32_t)>()(m_owner, value); }
 
     MtProperty* next() const { return m_next; }
     MtProperty* prev() const { return m_prev; }

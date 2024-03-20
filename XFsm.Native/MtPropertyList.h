@@ -17,7 +17,7 @@ struct MtPropertyIterator {
     }
 
     MtPropertyIterator operator++(int) {
-        MtPropertyIterator tmp = *this;
+        const MtPropertyIterator tmp = *this;
         m_current = m_current->next();
         return tmp;
     }
@@ -28,12 +28,12 @@ struct MtPropertyIterator {
     }
 
     MtPropertyIterator operator--(int) {
-        MtPropertyIterator tmp = *this;
+        const MtPropertyIterator tmp = *this;
         m_current = m_current->prev();
         return tmp;
     }
 
-    value_type operator*() {
+    value_type operator*() const {
         return m_current;
     }
 
@@ -54,23 +54,23 @@ private:
 };
 
 class MtPropertyList {
-    MtProperty* m_first;
-    MtProperty** m_pool;
-    uint32_t m_pool_pos;
+    MtProperty* m_first = nullptr;
+    MtProperty** m_pool = nullptr;
+    uint32_t m_pool_pos = 0;
 
 public:
-    virtual ~MtPropertyList() {}
+    virtual ~MtPropertyList() = default;
 
-    MtPropertyList(MtPropertyList* (*ctor)(MtPropertyList*)) {
+    explicit MtPropertyList(MtPropertyList* (*ctor)(MtPropertyList*)) {
         ctor(this);
     }
 
     MtPropertyIterator begin() {
-        return MtPropertyIterator(m_first);
+        return { m_first };
     }
 
     MtPropertyIterator end() {
-        return MtPropertyIterator(nullptr);
+        return { nullptr };
     }
 };
 SIZE_ASSERT(MtPropertyList, 0x20);

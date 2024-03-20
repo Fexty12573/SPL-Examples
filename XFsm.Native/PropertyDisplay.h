@@ -2,13 +2,13 @@
 
 #include "MtPropertyList.h"
 
-void display_imgui_properties(MtObject* obj);
+void display_imgui_properties(MtObject* obj, const char* name = nullptr, const char* comment = nullptr);
 
-void display_prop(MtProperty* prop);
-void display_prop_value(MtProperty* prop);
-void display_prop_value_array(MtProperty* prop);
-void display_prop_property(MtProperty* prop);
-void display_prop_property_array(MtProperty* prop);
+void display_prop(const MtProperty* prop);
+void display_prop_value(const MtProperty* prop);
+void display_prop_value_array(const MtProperty* prop);
+void display_prop_property(const MtProperty* prop);
+void display_prop_property_array(const MtProperty* prop);
 
 struct MtString {
     uint32_t RefCount;

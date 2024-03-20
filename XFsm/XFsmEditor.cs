@@ -203,6 +203,7 @@ public class XFsmEditor
 
             _baseFsmProcessDescriptors = dict.ToImmutableDictionary();
 
+            Log.Debug("Setting Callbacks");
             NodeEditor.SetCallbacks();
         }
 
@@ -713,7 +714,7 @@ public class XFsmEditor
                 var framePadding = style.FramePadding.Y;
                 style.FramePadding.Y = 6f;
 
-                if (ImGui.SmallButton(FA6.ArrowUp) && !colorsPushed)
+                if (ImGui.ArrowButton("##link-up", ImGuiDir.Up) && !colorsPushed)
                 {
                     output.Parent.OutputPins.Reverse(pinIndex - 1, 2);
                     output.Parent.BackingNode.Links.Swap(pinIndex - 1, pinIndex);
@@ -735,7 +736,7 @@ public class XFsmEditor
                 }
 
                 ImGui.SameLine();
-                if (ImGui.SmallButton(FA6.ArrowDown) && !colorsPushed)
+                if (ImGui.ArrowButton("##link-down", ImGuiDir.Down) && !colorsPushed)
                 {
                     output.Parent.OutputPins.Reverse(pinIndex, 2);
                     output.Parent.BackingNode.Links.Swap(pinIndex, pinIndex + 1);
@@ -1347,27 +1348,61 @@ public class XFsmEditor
             var indicesToSwap = (-1, -1);
             XFsmNodeProcess? processToRemove = null;
             var qnode = (XFsmQuestNode)node;
+
+            if (ImGui.Button("Add Process"))
+            {
+                _processInsertIndex = -1;
+                ImGui.OpenPopup("New Process");
+            }
+            var newProcessPopupId = ImGui.GetID("New Process");
+
             foreach (var process in qnode.Processes)
             {
                 ImGui.PushID(process.BackingProcess.Instance);
 
-                if (ImGui.ArrowButton("##up", ImGuiDir.Up))
+                var procIndex = qnode.Processes.IndexOf(process);
+
+                if (procIndex == 0)
                 {
-                    var index = qnode.Processes.IndexOf(process);
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                }
+
+                if (ImGui.ArrowButton("##up", ImGuiDir.Up) && procIndex > 0)
+                {
+                    var index = procIndex;
                     indicesToSwap = (index - 1, index);
                 }
 
-                ImGui.SameLine();
-
-                if (ImGui.ArrowButton("##down", ImGuiDir.Down))
+                if (procIndex == 0)
                 {
-                    var index = qnode.Processes.IndexOf(process);
-                    indicesToSwap = (index, index + 1);
+                    ImGui.PopStyleColor(3);
                 }
 
                 ImGui.SameLine();
 
-                if (ImGui.Button(FA6.X))
+                if (procIndex == qnode.Processes.Count - 1)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                }
+
+                if (ImGui.ArrowButton("##down", ImGuiDir.Down))
+                {
+                    var index = procIndex;
+                    indicesToSwap = (index, index + 1);
+                }
+
+                if (procIndex == qnode.Processes.Count - 1)
+                {
+                    ImGui.PopStyleColor(3);
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button(FA6.Xmark))
                 {
                     processToRemove = process;
                 }
@@ -1380,18 +1415,17 @@ public class XFsmEditor
                 {
                     ImGui.OpenPopup("Process Context Menu");
                 }
-
-                var newProcessPopupId = ImGui.GetID("New Process");
+                
                 if (ImGui.BeginPopup("Process Context Menu"))
                 {
-                    if (ImGui.MenuItem("Shift Up"))
+                    if (ImGui.MenuItem("Shift Up") && procIndex > 0)
                     {
-                        var index = qnode.Processes.IndexOf(process);
+                        var index = procIndex;
                         indicesToSwap = (index - 1, index);
                     }
-                    if (ImGui.MenuItem("Shift Down"))
+                    if (ImGui.MenuItem("Shift Down") && procIndex < qnode.Processes.Count - 1)
                     {
-                        var index = qnode.Processes.IndexOf(process);
+                        var index = procIndex;
                         indicesToSwap = (index, index + 1);
                     }
                     if (ImGui.MenuItem("Remove"))
@@ -1400,37 +1434,15 @@ public class XFsmEditor
                     }
                     if (ImGui.MenuItem("Insert Process Before"))
                     {
-                        _processInsertIndex = qnode.Processes.IndexOf(process);
+                        _processInsertIndex = procIndex;
                         ImGui.OpenPopup(newProcessPopupId);
                     }
                     if (ImGui.MenuItem("Insert Process After"))
                     {
-                        _processInsertIndex = qnode.Processes.IndexOf(process) + 1;
+                        _processInsertIndex = procIndex + 1;
+                        if (_processInsertIndex >= qnode.Processes.Count)
+                            _processInsertIndex = -1; // Append
                         ImGui.OpenPopup(newProcessPopupId);
-                    }
-
-                    ImGui.EndPopup();
-                }
-
-                if (ImGui.BeginPopup("New Process"))
-                {
-                    if (ImGui.BeginCombo("Type", "Select a type..."))
-                    {
-                        foreach (var (procName, descriptor) in _questFsmProcesses.OrderBy(kv => kv.Key))
-                        {
-                            if (ImGui.Selectable(procName))
-                            {
-                                qnode.AddProcess(descriptor, _processInsertIndex);
-                                _processInsertIndex = -1;
-                            }
-                        }
-
-                        ImGui.EndCombo();
-                    }
-
-                    if (_processInsertIndex == -1)
-                    {
-                        ImGui.CloseCurrentPopup();
                     }
 
                     ImGui.EndPopup();
@@ -1471,23 +1483,18 @@ public class XFsmEditor
 
                     if (process.Descriptor.ParamDti is not null)
                     {
-                        if (ImGui.TreeNode("Properties"))
+                        if (process.Parameter is null)
                         {
-                            if (process.Parameter is null)
+                            ImGui.Text("No parameter found");
+                            if (ImGui.Button("Add Parameter"))
                             {
-                                ImGui.Text("No parameter found");
-                                if (ImGui.Button("Add Parameter"))
-                                {
-                                    process.Parameter = process.Descriptor.ParamDti.CreateInstance<MtObject>();
-                                }
+                                process.Parameter = process.Descriptor.ParamDti.CreateInstance<MtObject>();
                             }
+                        }
 
-                            if (process.Parameter is not null)
-                            {
-                                NodeEditor.DisplayMtObject(process.Parameter.Instance);
-                            }
-
-                            ImGui.TreePop();
+                        if (process.Parameter is not null)
+                        {
+                            NodeEditor.DisplayMtObject(process.Parameter.Instance);
                         }
                     }
                 }
@@ -1504,6 +1511,46 @@ public class XFsmEditor
             if (processToRemove is not null)
             {
                 qnode.RemoveProcess(processToRemove);
+            }
+
+            if (qnode.Processes.Count == 0)
+            {
+                ImGui.Text("No processes found");
+            }
+
+            if (ImGui.BeginPopup("New Process"))
+            {
+                var shouldClose = false;
+
+                if (ImGui.BeginCombo("Type", "Select a type..."))
+                {
+                    foreach (var (procName, descriptor) in _questFsmProcesses.OrderBy(kv => kv.Key))
+                    {
+                        if (ImGui.Selectable(procName))
+                        {
+                            if (_processInsertIndex != -1)
+                            {
+                                qnode.AddProcess(descriptor, _processInsertIndex);
+                                _processInsertIndex = -1;
+                            }
+                            else
+                            {
+                                qnode.AddProcess(descriptor);
+                            }
+
+                            shouldClose = true;
+                        }
+                    }
+
+                    ImGui.EndCombo();
+                }
+
+                if (shouldClose)
+                {
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
             }
         }
     }
@@ -2299,7 +2346,7 @@ public class XFsmQuestNode : XFsmNode
         var fsmProcess = BackingNode.AddProcess(descriptor.Name);
         var nodeProcess = new XFsmNodeProcess(fsmProcess, descriptor)
         {
-            Parameter = descriptor.ParamDti.CreateInstance<MtObject>()
+            Parameter = descriptor.ParamDti?.CreateInstance<MtObject>()
         };
         Processes.Add(nodeProcess);
         return nodeProcess;
