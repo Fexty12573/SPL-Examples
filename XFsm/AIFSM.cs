@@ -250,13 +250,34 @@ public class AIFSMNode : AIFSMObject
         }
     }
 
-    public AIFSMNodeProcess AddProcess(string containerName)
+    public AIFSMNodeProcess AddProcess(string containerName, string categoryName = "cAIFSMProcessContainer")
     {
         var process = MtDti.Find("cAIFSMNodeProcess")?.CreateInstance<AIFSMNodeProcess>() 
             ?? throw new NullReferenceException("Failed to create AIFSMNodeProcess instance");
 
         AddProcess(process);
         process.ContainerName = containerName;
+        process.CategoryName = categoryName;
+
+        return process;
+    }
+
+    public unsafe AIFSMNodeProcess InsertProcess(int index, string containerName, string categoryName = "cAIFSMProcessContainer")
+    {
+        var process = MtDti.Find("cAIFSMNodeProcess")?.CreateInstance<AIFSMNodeProcess>() 
+            ?? throw new NullReferenceException("Failed to create AIFSMNodeProcess instance");
+
+        AddProcess(process);
+        process.ContainerName = containerName;
+        process.CategoryName = categoryName;
+
+        var processes = Processes.Pointer;
+        for (var i = ProcessCount - 1; i > index; i--)
+        {
+            processes[i] = processes[i - 1];
+        }
+
+        processes[index] = process.Instance;
 
         return process;
     }

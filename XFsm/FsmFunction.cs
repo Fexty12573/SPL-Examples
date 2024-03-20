@@ -6,10 +6,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using SharpPluginLoader.Core.Memory;
 
 namespace XFsm;
 
-[StructLayout(LayoutKind.Sequential)]
+[StructLayout(LayoutKind.Sequential, Size = 0x30)]
 internal readonly unsafe struct FsmFunction
 {
     private readonly sbyte* _namePtr;
@@ -19,50 +20,22 @@ internal readonly unsafe struct FsmFunction
     public readonly nint OnUpdate;
     public readonly nint OnEnd;
 
-    public string Name => new(_namePtr);
-    public MtDti ParentDti => new(_parentDti);
-    public MtDti ParamDti => new(_paramDti);
+    public string Name => _namePtr != null ? new string(_namePtr) : string.Empty;
+    public MtDti ParentDti => _parentDti != 0 ? new MtDti(_parentDti) : new MtDti();
+    public MtDti? ParamDti => _paramDti != 0 ? new MtDti(_paramDti) : null;
 
     public bool IsEmpty => _namePtr == null;
-}
 
-[StructLayout(LayoutKind.Sequential)]
-internal readonly unsafe struct FsmFunctionList
-{
-    private readonly NativeArray<FsmFunction> _functions;
-
-    public ref FsmFunction this[int index] => ref _functions[index];
-    public int Count => _functions.Length;
-
-    public IEnumerator<FsmFunction> GetEnumerator()
+    public static NativeArray<FsmFunction> CreateArray(nint functions)
     {
-        foreach (var function in _functions)
+        var start = functions;
+        var i = 0;
+        while (MemoryUtil.Read<nint>(functions) != 0 && i < 500)
         {
-            yield return function;
+            functions += sizeof(FsmFunction);
+            i++;
         }
-    }
 
-    public FsmFunctionList(FsmFunction* functions)
-    {
-        for (int i = 0; i < int.MaxValue; i++)
-        {
-            if (functions[i].IsEmpty)
-            {
-                _functions = new NativeArray<FsmFunction>((nint)functions, i);
-            }
-        }
-    }
-
-    public FsmFunctionList(nint functions)
-    {
-        var pfunctions = (FsmFunction*)functions;
-        
-        for (int i = 0; i < int.MaxValue; i++)
-        {
-            if (pfunctions[i].IsEmpty)
-            {
-                _functions = new NativeArray<FsmFunction>(functions, i);
-            }
-        }
+        return new NativeArray<FsmFunction>(start, i);
     }
 }

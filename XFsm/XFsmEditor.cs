@@ -1,4 +1,5 @@
-﻿using SharpPluginLoader.Core;
+﻿using System.Collections.Immutable;
+using SharpPluginLoader.Core;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -71,6 +72,7 @@ public class XFsmEditor
 
     private readonly List<(string Name, PropType Type)> _questFsmVariables = [];
     private readonly Dictionary<string, XFsmProcessDescriptor> _questFsmProcesses = [];
+    private ImmutableDictionary<string, XFsmProcessDescriptor> _baseFsmProcessDescriptors = null!;
 
     #region Allocators
 
@@ -126,7 +128,7 @@ public class XFsmEditor
         }
     }
 
-    public void SetFsm(AIFSM fsm)
+    public unsafe void SetFsm(AIFSM fsm)
     {
         if (_ctx == 0)
         {
@@ -172,6 +174,34 @@ public class XFsmEditor
             }
 
             _parameterDtis.Sort((a, b) => StringComparer.Ordinal.Compare(a.Name, b.Name));
+
+            var baseFsmDti = MtDti.Find("cFSMQuest");
+            Ensure.NotNull(baseFsmDti);
+
+            var baseFsm = baseFsmDti.CreateInstance<MtObject>();
+            if (baseFsm.Instance == 0)
+            {
+                ImGuiExtensions.NotificationError("Failed to create instance of cFSMQuest");
+                Log.Error("Failed to create instance of cFSMQuest");
+                return;
+            }
+
+            baseFsmDti = null;
+            paramDti = null;
+
+            var dict = new Dictionary<string, XFsmProcessDescriptor>();
+            var functions = FsmFunction.CreateArray(
+                new NativeFunction<nint, nint>(baseFsm.GetVirtualFunction(5)).Invoke(baseFsm.Instance)
+            );
+
+            for (var i = 0; i < functions.Length; i++)
+            {
+                ref var function = ref functions[i];
+                Log.Info($"{i}: {function.Name}");
+                dict.Add(function.Name, new XFsmProcessDescriptor(function.Name, function.ParamDti));
+            }
+
+            _baseFsmProcessDescriptors = dict.ToImmutableDictionary();
         }
 
         if (fsm.RootCluster is null)
@@ -236,6 +266,8 @@ public class XFsmEditor
                 return;
             }
 
+            tempObjectDti = null;
+
             _questFsmVariables.Clear();
 
             var properties = tempObject.GetProperties();
@@ -244,18 +276,21 @@ public class XFsmEditor
                 _questFsmVariables.Add((prop.HashName, prop.Type));
             }
 
-            unsafe
+            _questFsmProcesses.Clear();
+
+            var functions = FsmFunction.CreateArray(
+                new NativeFunction<nint, nint>(tempObject.GetVirtualFunction(5)).Invoke(tempObject.Instance)
+            );
+
+            for (var i = 0; i < functions.Length; i++)
             {
-                _questFsmProcesses.Clear();
+                ref var function = ref functions[i];
+                _questFsmProcesses.TryAdd(function.Name, new XFsmProcessDescriptor(function.Name, function.ParamDti));
+            }
 
-                var functions = new FsmFunctionList(
-                    new NativeFunction<nint, nint>(tempObject.GetVirtualFunction(5)).Invoke(tempObject.Instance)
-                );
-
-                foreach (var function in functions)
-                {
-                    _questFsmProcesses.Add(function.Name, new XFsmProcessDescriptor(function.Name, function.ParamDti));
-                }
+            foreach (var (name, descriptor) in _baseFsmProcessDescriptors)
+            {
+                _questFsmProcesses.TryAdd(name, descriptor);
             }
             
             tempObject.Destroy(true);
@@ -1344,6 +1379,7 @@ public class XFsmEditor
                     ImGui.OpenPopup("Process Context Menu");
                 }
 
+                var newProcessPopupId = ImGui.GetID("New Process");
                 if (ImGui.BeginPopup("Process Context Menu"))
                 {
                     if (ImGui.MenuItem("Shift Up"))
@@ -1363,12 +1399,12 @@ public class XFsmEditor
                     if (ImGui.MenuItem("Insert Process Before"))
                     {
                         _processInsertIndex = qnode.Processes.IndexOf(process);
-                        ImGui.OpenPopup("New Process");
+                        ImGui.OpenPopup(newProcessPopupId);
                     }
                     if (ImGui.MenuItem("Insert Process After"))
                     {
                         _processInsertIndex = qnode.Processes.IndexOf(process) + 1;
-                        ImGui.OpenPopup("New Process");
+                        ImGui.OpenPopup(newProcessPopupId);
                     }
 
                     ImGui.EndPopup();
@@ -1378,15 +1414,21 @@ public class XFsmEditor
                 {
                     if (ImGui.BeginCombo("Type", "Select a type..."))
                     {
-                        foreach (var (procName, descriptor) in _questFsmProcesses)
+                        foreach (var (procName, descriptor) in _questFsmProcesses.OrderBy(kv => kv.Key))
                         {
-                            if (ImGui.Selectable(descriptor.Name))
+                            if (ImGui.Selectable(procName))
                             {
-                                // TODO: Add new process
+                                qnode.AddProcess(descriptor, _processInsertIndex);
+                                _processInsertIndex = -1;
                             }
                         }
 
                         ImGui.EndCombo();
+                    }
+
+                    if (_processInsertIndex == -1)
+                    {
+                        ImGui.CloseCurrentPopup();
                     }
 
                     ImGui.EndPopup();
@@ -1425,23 +1467,26 @@ public class XFsmEditor
                         process.BackingProcess.CategoryName = name;
                     }
 
-                    if (ImGui.TreeNode("Properties"))
+                    if (process.Descriptor.ParamDti is not null)
                     {
-                        if (process.Parameter is null)
+                        if (ImGui.TreeNode("Properties"))
                         {
-                            ImGui.Text("No parameter found");
-                            if (ImGui.Button("Add Parameter"))
+                            if (process.Parameter is null)
                             {
-                                process.Parameter = process.Descriptor.ParamDti.CreateInstance<MtObject>();
+                                ImGui.Text("No parameter found");
+                                if (ImGui.Button("Add Parameter"))
+                                {
+                                    process.Parameter = process.Descriptor.ParamDti.CreateInstance<MtObject>();
+                                }
                             }
-                        }
 
-                        foreach (var field in process.Descriptor.ParamFields)
-                        {
-                            DisplayField(field, process.Parameter);
-                        }
+                            foreach (var field in process.Descriptor.ParamFields)
+                            {
+                                DisplayField(field, process.Parameter);
+                            }
 
-                        ImGui.TreePop();
+                            ImGui.TreePop();
+                        }
                     }
                 }
 
@@ -2463,6 +2508,17 @@ public class XFsmQuestNode : XFsmNode
         return nodeProcess;
     }
 
+    public XFsmNodeProcess AddProcess(XFsmProcessDescriptor descriptor, int index)
+    {
+        var fsmProcess = BackingNode.InsertProcess(index, descriptor.Name);
+        var nodeProcess = new XFsmNodeProcess(fsmProcess, descriptor)
+        {
+            Parameter = descriptor.ParamDti.CreateInstance<MtObject>()
+        };
+        Processes.Insert(index, nodeProcess);
+        return nodeProcess;
+    }
+
     public void RemoveProcess(XFsmNodeProcess process)
     {
         Processes.Remove(process);
@@ -2514,16 +2570,23 @@ public class XFsmConditionTreeInfo(AIConditionTreeInfo info, int treeIndex)
 public class XFsmProcessDescriptor
 {
     public string Name { get; }
-    public MtDti ParamDti { get; }
+    public MtDti? ParamDti { get; }
     public IReadOnlyList<XFsmProcessParamField> ParamFields { get; }
 
-    public XFsmProcessDescriptor(string name, MtDti paramDti)
+    public XFsmProcessDescriptor(string name, MtDti? paramDti)
     {
         Name = name;
         ParamDti = paramDti;
+        if (paramDti is null)
+        {
+            ParamFields = [];
+            return;
+        }
         
-        var paramProps = paramDti.GetProperties();
+        var tempObj = paramDti.CreateInstance<MtObject>();
+        var paramProps = tempObj.GetProperties();
         ParamFields = paramProps.Select(p => new XFsmProcessParamField(p)).ToList();
+        tempObj.Destroy(true);
     }
 }
 
