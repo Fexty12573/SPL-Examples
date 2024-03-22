@@ -1319,6 +1319,7 @@ public class XFsmEditor
     }
 
     private int _processInsertIndex = -1;
+    private string _processNameSearchBuffer = "";
     private void ShowNodeProperties(XFsmNode node)
     {
         ImGui.Text($"Node Id: {node.RealId}");
@@ -1586,11 +1587,16 @@ public class XFsmEditor
             if (ImGui.BeginPopup("New Process"))
             {
                 var shouldClose = false;
-
+                
                 if (ImGui.BeginCombo("Type", "Select a type..."))
                 {
+                    ImGui.InputTextWithHint("##searchbox", "Search...", ref _processNameSearchBuffer, 260);
+                    ImGui.BeginChild("##selectables", new Vector2(ImGui.CalcItemWidth(), 500f));
                     foreach (var (procName, descriptor) in _questFsmProcesses.OrderBy(kv => kv.Key))
                     {
+                        if (!procName.Contains(_processNameSearchBuffer, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
                         if (ImGui.Selectable(procName))
                         {
                             if (_processInsertIndex != -1)
@@ -1606,7 +1612,7 @@ public class XFsmEditor
                             shouldClose = true;
                         }
                     }
-
+                    ImGui.EndChild();
                     ImGui.EndCombo();
                 }
 
@@ -1681,7 +1687,7 @@ public class XFsmEditor
             var name = treeInfo.BackingInfo.Name.HasName
                 ? $"{id}: {treeInfo.BackingInfo.Name.Name}"
                 : $"{id}";
-            if (ImGui.TreeNode(name))
+            if (ImGui.TreeNode(treeInfo.BackingInfo.Instance, name))
             {
                 name = treeInfo.BackingInfo.Name.Name;
                 if (ImGui.InputText("Name", ref name, 0x50))
@@ -1700,9 +1706,9 @@ public class XFsmEditor
     private bool _conditionShowTranslated = false;
     private void ShowConditionList()
     {
+        ImGui.InputText("Filter", ref _conditionFilter, 1024);
         if (_isWeaponFsm)
         {
-            ImGui.InputText("Filter", ref _conditionFilter, 1024);
             ImGui.Checkbox("Match Translated", ref _filterMatchTranslated);
             ImGui.SameLine();
             ImGui.Checkbox("Show Translated", ref _conditionShowTranslated);
@@ -1745,6 +1751,20 @@ public class XFsmEditor
                     }
                     
                     ImGui.TreePop();
+                }
+            }
+        }
+        else
+        {
+            foreach (var (name, type) in _questFsmVariables)
+            {
+                if (string.IsNullOrEmpty(_conditionFilter) || name.Contains(_conditionFilter))
+                {
+                    if (ImGui.Selectable($"{name} ({type})"))
+                    {
+                        ImGui.SetClipboardText(name);
+                        ImGuiExtensions.NotificationInfo("Copied to clipboard");
+                    }
                 }
             }
         }
