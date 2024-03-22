@@ -200,7 +200,6 @@ public class XFsmEditor
             for (var i = 0; i < functions.Length; i++)
             {
                 ref var function = ref functions[i];
-                Log.Info($"{i}: {function.Name}");
                 dict.Add(function.Name, new XFsmProcessDescriptor(function.Name, function.ParamDti));
             }
 
@@ -999,6 +998,7 @@ public class XFsmEditor
             {
                 var qnode = (XFsmQuestNode)node;
                 highlight = qnode.RealId == _nodeMatchValueInt4;
+                highlight |= qnode.Processes.Count == _nodeMatchValueInt1;
 
                 if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString1))
                 {
