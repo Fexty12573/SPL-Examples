@@ -78,7 +78,9 @@ void layout_nodes(GVC_t* gv, XFsmGvcNode* nodes, int node_count, const XFsmGvcEd
     
     for (int i = 0; i < edge_count; i++) {
         auto edge = edges[i];
-        agedge(g, node_map[edge.SourceId], node_map[edge.TargetId], nullptr, 1);
+        auto e = agedge(g, node_map[edge.SourceId], node_map[edge.TargetId], nullptr, 1);
+        agsafeset(e, (char*)"headport", "w", "");
+        agsafeset(e, (char*)"tailport", "e", "");
     }
 
     const auto result = gvLayout(gv, g, engine);

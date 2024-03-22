@@ -20,9 +20,12 @@ using System.Diagnostics;
 
 namespace XFsm;
 
+// TODO: Copy nodes
+// TODO: New Node IDs
+// TODO: Filters for quest FSMs
+
 using NodeEditor = InternalCalls;
 using FA6 = FontAwesome6;
-using static SharpPluginLoader.Core.Components.CollisionComponent;
 
 public class XFsmEditor
 {
@@ -792,6 +795,14 @@ public class XFsmEditor
                 if (create)
                 {
                     CreateNewWeaponFsmNode(action ? "New Action Node" : "New Motion Node", action, openPopupPosition, _newNodePin);
+                    ImGui.CloseCurrentPopup();
+                }
+            }
+            else
+            {
+                if (ImGui.Button("Create New Node"))
+                {
+                    CreateNewQuestFsmNode("New Node", openPopupPosition, _newNodePin);
                     ImGui.CloseCurrentPopup();
                 }
             }
@@ -2015,6 +2026,45 @@ public class XFsmEditor
         return fsmNode;
     }
 
+    private XFsmQuestNode CreateNewQuestFsmNode(string name, Vector2 position, XFsmPin? originPin = null)
+    {
+        var node = Fsm!.RootCluster!.AddNode(name);
+        node.Id = GetNextFreeNodeId();
+
+        var fsmNode = new XFsmQuestNode(node, _questFsmProcesses)
+        {
+            Position = position
+        };
+
+        NodeEditor.SetNodePosition(fsmNode.Id, fsmNode.Position);
+        _nodes.Add(fsmNode);
+
+        switch (originPin)
+        {
+            case XFsmInputPin input:
+            {
+                var link = node.AddLink($"{node.Name} -> {input.Parent.Name}");
+                link.DestinationNodeId = input.Parent.Id;
+                var pin = new XFsmOutputPin(fsmNode, link, 0);
+                fsmNode.OutputPins.Add(pin);
+                _links.Add(new XFsmLink(pin, input, link));
+                break;
+            }
+            case XFsmOutputPin output:
+            {
+                var existingLink = _links.Find(l => l.Source == output);
+                if (existingLink is not null)
+                    _links.Remove(existingLink);
+
+                output.BackingLink.DestinationNodeId = node.Id;
+                _links.Add(new XFsmLink(output, fsmNode.InputPin, output.BackingLink));
+                break;
+            }
+        }
+
+        return fsmNode;
+    }
+
     private static bool IsSingleConditionNode(XFsmConditionTreeInfo condition)
     {
         return condition.Type == ConditionTreeNodeType.OperationNode
@@ -2068,7 +2118,7 @@ public class XFsmEditor
 
     private int GetNextFreeNodeId()
     {
-        return _nodes.Count == 0 ? 0 : _nodes.Max(x => x.Id) + 1;
+        return _nodes.Count == 0 ? 0 : _nodes.Max(x => x.RealId) + 1;
     }
 
     private int GetNextFreeTreeInfoId()
