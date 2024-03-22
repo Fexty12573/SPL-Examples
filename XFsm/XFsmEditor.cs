@@ -21,8 +21,6 @@ using System.Diagnostics;
 namespace XFsm;
 
 // TODO: Copy nodes
-// TODO: New Node IDs
-// TODO: Filters for quest FSMs
 
 using NodeEditor = InternalCalls;
 using FA6 = FontAwesome6;
@@ -102,7 +100,9 @@ public class XFsmEditor
     private int _nodeMatchValueInt2 = 0;
     private int _nodeMatchValueInt3 = 0;
     private int _nodeMatchValueInt4 = 0;
-    private string _nodeMatchValueString = "";
+    private string _nodeMatchValueString1 = "";
+    private string _nodeMatchValueString2 = "";
+    private string _nodeMatchValueString3 = "";
 
     private bool _highlightMatchingLinks = false;
     private XFsmNode? _linkMatchSourceNode = null;
@@ -988,9 +988,49 @@ public class XFsmEditor
                     _ => false
                 };
 
-                if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString))
+                if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString1))
                 {
-                    highlight = wpNode.Name.Contains(_nodeMatchValueString, StringComparison.OrdinalIgnoreCase);
+                    highlight = wpNode.Name.Contains(_nodeMatchValueString1, StringComparison.OrdinalIgnoreCase);
+                    if (!highlight && _translatedNodeNames.TryGetValue(wpNode.Id, out var translatedName))
+                        highlight |= translatedName.Contains(_nodeMatchValueString1, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            else
+            {
+                var qnode = (XFsmQuestNode)node;
+                highlight = qnode.RealId == _nodeMatchValueInt4;
+
+                if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString1))
+                {
+                    highlight = qnode.Name.Contains(_nodeMatchValueString1, StringComparison.OrdinalIgnoreCase);
+                    if (!highlight && _translatedNodeNames.TryGetValue(qnode.Id, out var translatedName))
+                        highlight = translatedName.Contains(_nodeMatchValueString1, StringComparison.OrdinalIgnoreCase);;
+                }
+
+                if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString2))
+                {
+                    highlight = qnode.Processes.Any(
+                        s => s.Descriptor.Name.Contains(_nodeMatchValueString2, StringComparison.OrdinalIgnoreCase)
+                    );
+                }
+            }
+
+            if (!highlight && !string.IsNullOrEmpty(_nodeMatchValueString3))
+            {
+                highlight = node.OutputPins.Any(
+                    p => p.Name.Contains(_nodeMatchValueString3, StringComparison.OrdinalIgnoreCase)
+                );
+                if (!highlight)
+                {
+                    foreach (var pin in node.OutputPins)
+                    {
+                        if (_translatedLinkNames.TryGetValue(pin.Id, out var translatedName))
+                        {
+                            highlight = translatedName.Contains(_nodeMatchValueString3, StringComparison.OrdinalIgnoreCase);
+                            if (highlight)
+                                break;
+                        }
+                    }
                 }
             }
 
@@ -1187,36 +1227,50 @@ public class XFsmEditor
                 ImGui.InputInt("Motion Id", ref _nodeMatchValueInt2);
                 ImGui.InputInt("Motion Id Phase 1", ref _nodeMatchValueInt3);
                 ImGui.InputInt("Id", ref _nodeMatchValueInt4);
-                ImGui.InputText("Name", ref _nodeMatchValueString, 260);
-
-                ImGui.Separator();
-
-                ImGui.Checkbox("Highlight Matching Links", ref _highlightMatchingLinks);
+                ImGui.InputText("Name", ref _nodeMatchValueString1, 260);
+            }
+            else
+            {
+                ImGui.Checkbox("Highlight Matching Nodes", ref _highlightMatchingNodes);
 
                 ImGui.NewLine();
-
-                ImGui.Text("Match by... (-1 = ignore)");
-
-                if (ImGui.InputInt("Source Node Id##links", ref _linkMatchValueInt1))
-                    _linkMatchSourceNode = GetNodeById(_linkMatchValueInt1, true);
-
-                if (ImGui.InputInt("Target Node Id##links", ref _linkMatchValueInt2))
-                    _linkMatchTargetNode = GetNodeById(_linkMatchValueInt2, true);
-
-                ImGui.Separator();
-
-                if (ImGui.Checkbox("Visualize Flow from Node", ref _visualizeFlow))
-                {
-                    if (_visualizeFlow)
-                    {
-                        _highlightMatchingNodes = false;
-                        _highlightMatchingLinks = false;
-                    }
-                }
-
-                if (ImGui.InputInt("Source Node Id##flow", ref _flowSourceNodeId))
-                    _flowSourceNode = GetNodeById(_flowSourceNodeId, true);
+                
+                ImGui.Text("Match by...");
+                ImGui.InputInt("Process Count", ref _nodeMatchValueInt1);
+                ImGui.InputInt("Id", ref _nodeMatchValueInt4);
+                ImGui.InputText("Name", ref _nodeMatchValueString1, 260);
+                ImGui.InputText("Process Name", ref _nodeMatchValueString2, 260);
             }
+
+            ImGui.InputText("Link Name", ref _nodeMatchValueString3, 260);
+
+            ImGui.Separator();
+
+            ImGui.Checkbox("Highlight Matching Links", ref _highlightMatchingLinks);
+
+            ImGui.NewLine();
+
+            ImGui.Text("Match by... (-1 = ignore)");
+
+            if (ImGui.InputInt("Source Node Id##links", ref _linkMatchValueInt1))
+                _linkMatchSourceNode = GetNodeById(_linkMatchValueInt1, true);
+
+            if (ImGui.InputInt("Target Node Id##links", ref _linkMatchValueInt2))
+                _linkMatchTargetNode = GetNodeById(_linkMatchValueInt2, true);
+
+            ImGui.Separator();
+
+            if (ImGui.Checkbox("Visualize Flow from Node", ref _visualizeFlow))
+            {
+                if (_visualizeFlow)
+                {
+                    _highlightMatchingNodes = false;
+                    _highlightMatchingLinks = false;
+                }
+            }
+
+            if (ImGui.InputInt("Source Node Id##flow", ref _flowSourceNodeId))
+                _flowSourceNode = GetNodeById(_flowSourceNodeId, true);
         }
     }
 
