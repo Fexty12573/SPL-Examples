@@ -23,8 +23,26 @@ public partial class MainWindow : Form
     private readonly Thread _updateThread;
     private readonly NativeFunction<nint, MonsterType, int, bool, nint> _spawnMonsterFunc;
     private readonly NativeFunction<int, int, nint, nint> _spawnGimmickFunc;
+    private readonly Patch[] _coordUpdatePatches =
+    [
+        new Patch((nint)0x141fbb9d7, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
+        new Patch((nint)0x141fbb9e5, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
+        new Patch((nint)0x141fbb9ed, Enumerable.Repeat<byte>(0x90, 8).ToArray())
+    ];
+    private readonly Patch _plTransparencyResetPatch = new((nint)0x141F6D852, Enumerable.Repeat<byte>(0x90, 8).ToArray());
 
     public Monster? SelectedMonster => (Monster?)cbSelectedMonster.SelectedItem;
+
+    public bool StickXLocked => cbLockStickX.Checked;
+    public bool StickYLocked => cbLockStickY.Checked;
+    public int StickX => (int)((float)tbStickX.Value * (32767f / 100f));
+    public int StickY => (int)((float)tbStickY.Value * (32767f / 100f));
+    public bool PlayerPosLocked => cbLockPlayerToEm.Checked;
+    public Vector3 PlayerPosOffset => new(
+        (float)tbPlLockOffsetX.Value,
+        (float)tbPlLockOffsetY.Value,
+        (float)tbPlLockOffsetZ.Value
+    );
 
     public MainWindow(Plugin plugin)
     {
@@ -105,24 +123,42 @@ public partial class MainWindow : Form
 
     private void UpdateThread()
     {
+        var lastUpdateTime = DateTime.Now;
         while (true)
         {
-            Thread.Sleep(100);
-            var monster = SelectedMonster;
-            if (monster is null)
-                continue;
+            var deltaTime = (float)(DateTime.Now - lastUpdateTime).TotalMilliseconds;
+            if (deltaTime > 100)
+            {
+                lastUpdateTime = DateTime.Now;
+                var monster = SelectedMonster;
+                if (monster is null)
+                    continue;
 
-            var action = monster.GetCurrentAction();
-            var animation = monster.CurrentAnimation;
+                var action = monster.GetCurrentAction();
+                var animation = monster.CurrentAnimation;
 
-            SetActionAnimation(action, animation);
-            SetMonsterCoords(monster.Position);
+                SetActionAnimation(action, animation);
+                SetMonsterCoords(monster.Position);
 
-            var player = Player.MainPlayer;
-            if (player is null)
-                continue;
+                var player = Player.MainPlayer;
+                if (player is null)
+                    continue;
 
-            SetPlayerCoords(player.Position);
+                SetPlayerCoords(player.Position);
+
+                //if (cbLockPlayerToEm.Checked)
+                //{
+                //    var offset = new Vector3(
+                //        (float)tbPlLockOffsetX.Value,
+                //        (float)tbPlLockOffsetY.Value,
+                //        (float)tbPlLockOffsetZ.Value
+                //    );
+
+                //    player.Teleport(monster.Position + offset);
+                //}
+            }
+
+            Thread.Sleep(10);
         }
     }
 
@@ -358,7 +394,9 @@ public partial class MainWindow : Form
         IEnumerable<int> actions;
         try
         {
-            actions = tbActionChain.Text.Split(',').Select(int.Parse);
+            actions = tbActionChain.Text
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(int.Parse);
         }
         catch (Exception)
         {
@@ -460,6 +498,9 @@ public partial class MainWindow : Form
 
         cbCoordsLocked.Checked = _plugin.LockedCoordinates.ContainsKey(monster);
         cbLockTargetCoords.Checked = _plugin.LockedTargetCoordinates.ContainsKey(monster);
+
+        tbMonsterTransparency.Value = (decimal)(SelectedMonster.GetTransparency() * 100);
+        nudMonsterHealth.Value = (decimal)SelectedMonster.Health;
     }
 
     private void cbLockTargetCoords_CheckedChanged(object sender, EventArgs e)
@@ -659,6 +700,73 @@ public partial class MainWindow : Form
     private void btnUnenrageMonster_Click(object sender, EventArgs e)
     {
         SelectedMonster?.Unenrage();
+    }
+
+    private void tbMonsterTransparency_ValueChanged(object sender, EventArgs e)
+    {
+        SelectedMonster?.SetTransparency((float)tbMonsterTransparency.Value / 100f);
+    }
+
+    private void tbMonsterSize_ValueChanged(object sender, EventArgs e)
+    {
+        if (SelectedMonster is null)
+            return;
+
+        var scale = (float)tbMonsterSize.Value;
+        SelectedMonster.Size = new Vector3(scale, scale, scale);
+    }
+
+    private void tbMonsterRot_ValueChanged(object sender, EventArgs e)
+    {
+        if (SelectedMonster is null)
+            return;
+
+        if (sender == tbMonsterRotX)
+        {
+            SelectedMonster.Rotation.X = (float)tbMonsterRotX.Value;
+        }
+        else if (sender == tbMonsterRotY)
+        {
+            SelectedMonster.Rotation.Y = (float)tbMonsterRotY.Value;
+        }
+        else if (sender == tbMonsterRotZ)
+        {
+            SelectedMonster.Rotation.Z = (float)tbMonsterRotZ.Value;
+        }
+        else if (sender == tbMonsterRotW)
+        {
+            SelectedMonster.Rotation.W = (float)tbMonsterRotW.Value;
+        }
+    }
+
+    private void cbPlInvisible_CheckedChanged(object sender, EventArgs e)
+    {
+        if (cbPlInvisible.Checked)
+        {
+            _plTransparencyResetPatch.Enable();
+        }
+        else
+        {
+            _plTransparencyResetPatch.Disable();
+        }
+
+        Player.MainPlayer?.SetTransparency(cbPlInvisible.Checked ? 0f : 1f);
+    }
+
+    private void cbLockPlayerToEm_CheckedChanged(object sender, EventArgs e)
+    {
+        if (cbLockPlayerToEm.Checked)
+        {
+            _coordUpdatePatches[0].Enable();
+            _coordUpdatePatches[1].Enable();
+            _coordUpdatePatches[2].Enable();
+        }
+        else
+        {
+            _coordUpdatePatches[0].Disable();
+            _coordUpdatePatches[1].Disable();
+            _coordUpdatePatches[2].Disable();
+        }
     }
 
 #pragma warning restore IDE1006 // Naming Styles

@@ -6,6 +6,7 @@ using SharpPluginLoader.Core.Actions;
 using SharpPluginLoader.Core.Components;
 using SharpPluginLoader.Core.Entities;
 using SharpPluginLoader.Core.Memory;
+using SharpPluginLoader.Core.Models;
 using SharpPluginLoader.Core.MtTypes;
 
 namespace GeneralUtility;
@@ -35,12 +36,14 @@ public class Plugin : IPlugin
     };
 
     private Hook<SetTargetPositionDelegate> _setTargetPositionHook = null!;
+    private Hook<InputUpdateDelegate> _inputUpdateHook = null!;
 
     public void OnLoad()
     {
         LoadConfig();
 
         _setTargetPositionHook = Hook.Create<SetTargetPositionDelegate>(0x141393ba0, SetTargetPositionHook);
+        _inputUpdateHook = Hook.Create<InputUpdateDelegate>(0x141b15af0, InputUpdateHook);
         _mainWindow = new MainWindow(this);
 
         Log.Info("Starting WinForms Thread");
@@ -55,6 +58,16 @@ public class Plugin : IPlugin
         {
             monster.Position = coords;
         }
+
+        var selectedMonster = _mainWindow.SelectedMonster;
+        if (selectedMonster is null || !_mainWindow.PlayerPosLocked)
+            return;
+
+        var player = Player.MainPlayer;
+        if (player is null)
+            return;
+
+        player.Teleport(selectedMonster.Position + _mainWindow.PlayerPosOffset);
     }
 
     public void OnMonsterCreate(Monster monster)
@@ -79,11 +92,12 @@ public class Plugin : IPlugin
         var actionChain = GetActionChain(monster.Type);
         if (actionChain is not null && actionChain.GetNextAction(out var newActionId))
         {
+            Log.Info($"Setting action for {monster} to {newActionId} (Action Chain)");
             actionId = newActionId;
         }
-
-        if (OverrideActionId != 0)
+        else if (OverrideActionId != 0)
         {
+            Log.Info($"Setting action for {monster} to {OverrideActionId} (Override)");
             actionId = OverrideActionId;
 
             if (!LockOverrideAction)
@@ -163,6 +177,17 @@ public class Plugin : IPlugin
         _setTargetPositionHook.Original(actionParams, index, ref pos);
     }
 
+    public void InputUpdateHook(nint pad)
+    {
+        _inputUpdateHook?.Original(pad);
+        ref var axis = ref MemoryUtil.GetRef<Point>(pad + 0x1B8);
+
+        if (_mainWindow.StickXLocked)
+            axis.X = _mainWindow.StickX;
+        if (_mainWindow.StickYLocked)
+            axis.Y = _mainWindow.StickY;
+    }
+
     [STAThread]
     public static void WinformsRun()
     {
@@ -175,4 +200,5 @@ public class Plugin : IPlugin
     }
 
     public delegate void SetTargetPositionDelegate(nint actionParams, int index, ref Vector3 pos);
+    public delegate void InputUpdateDelegate(nint pad);
 }
