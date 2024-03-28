@@ -18,6 +18,10 @@ public unsafe class Plugin : IPlugin
     private DirectoryInfo? _baseDirectory;
     private DirectoryInfo? _currentDirectory;
 
+    private ChunkTree _chunks = null!;
+    private ChunkNode? _currentChunkDirectory;
+
+    private bool _displayChunks = false;
     private bool _firstRender = true;
     private bool _isAnyItemHovered = false;
     private string _searchString = "";
@@ -40,12 +44,28 @@ public unsafe class Plugin : IPlugin
 
     private const string OpenKeybind = "AssetBrowser:Open";
 
-    public void OnLoad()
+    public unsafe void OnLoad()
     {
         _baseDirectory = new DirectoryInfo("nativePC");
         _currentDirectory = _baseDirectory;
 
         KeyBindings.AddKeybind(OpenKeybind, new Keybind<Key>(Key.A, [Key.LeftShift, Key.LeftAlt]));
+
+        var stringList = MemoryUtil.Read<nint>(0x1450f7748);
+        List<string> paths = [];
+
+        while (MemoryUtil.Read<byte>(stringList) != 0)
+        {
+            var str = MemoryUtil.ReadString(stringList);
+            stringList += str.Length + 1;
+            paths.Add(str);
+        }
+
+        //using var fs = new FileStream("./chunkTree.txt", FileMode.Create);
+        //using var sw = new StreamWriter(fs);
+        _chunks = ChunkTree.Parse(paths);
+        _currentChunkDirectory = _chunks.Root;
+        //_chunks.Print(sw.WriteLine);
     }
 
     public void OnUpdate(float deltaTime)
@@ -99,7 +119,11 @@ public unsafe class Plugin : IPlugin
                     (ImGuiCol.HeaderActive, new Vector4(0, 0, 0, 1))
                 );
 
-                if (_baseDirectory is not null)
+                if (_displayChunks)
+                {
+
+                }
+                else if (_baseDirectory is not null)
                 {
                     foreach (var dir in _baseDirectory.EnumerateDirectories())
                     {
@@ -152,7 +176,15 @@ public unsafe class Plugin : IPlugin
 
                             using var border = new ScopedStyle(ImGuiStyleVar.FrameBorderSize, 0f);
                             using var padding = new ScopedStyle(ImGuiStyleVar.CellPadding, new Vector2(CellPadding, CellPadding));
-                            RenderItems();
+
+                            if (_displayChunks)
+                            {
+                                RenderChunkItems();
+                            }
+                            else
+                            {
+                                RenderItems();
+                            }
 
                             ImGui.EndColumns();
                         }
@@ -187,7 +219,10 @@ public unsafe class Plugin : IPlugin
             {
                 using var spacing = new ScopedStyle(ImGuiStyleVar.ItemSpacing, new Vector2(2, 0));
 
-                var isDisabled = _currentDirectory?.Name == RootDirectory;
+                var isDisabled = _displayChunks
+                    ? _currentChunkDirectory?.Parent is null
+                    : _currentDirectory?.Name == RootDirectory;
+
                 if (isDisabled)
                 {
                     ImGui.PushStyleVar(ImGuiStyleVar.Alpha, 0.5f);
@@ -198,7 +233,10 @@ public unsafe class Plugin : IPlugin
 
                 if (AssetBrowserButton("##up", IconRepository.UpArrow) && !isDisabled)
                 {
-                    ChangeDirectory(_currentDirectory?.Parent);
+                    if (_displayChunks)
+                        ChangeDirectory(_currentChunkDirectory?.Parent);
+                    else
+                        ChangeDirectory(_currentDirectory?.Parent);
                 }
 
                 if (isDisabled)
@@ -221,6 +259,42 @@ public unsafe class Plugin : IPlugin
                 // TODO: Implement search functionality
             }
 
+            {
+                ImGui.Checkbox("##show chunks", ref _displayChunks);
+                ShowTooltip("Show Chunks");
+                ImGui.Spring(-1, edgeOffset * 2);
+            }
+
+            if (_displayChunks)
+            {
+                List<ChunkNode> breadCrumbs = [];
+                var current = _currentChunkDirectory;
+                while (current is not null)
+                {
+                    breadCrumbs.Add(current);
+                    if (current.Name == "/")
+                        break;
+
+                    current = current.Parent;
+                }
+
+                breadCrumbs.Reverse();
+                var textPadding = ImGui.GetStyle().FramePadding.Y;
+                using var rounding = new ScopedStyle(ImGuiStyleVar.FrameRounding, 3f);
+
+                foreach (var dir in breadCrumbs)
+                {
+                    var textSize = ImGui.CalcTextSize(dir.Name);
+                    if (ImGui.Selectable(dir.Name, false, ImGuiSelectableFlags.None,
+                            textSize with { Y = textSize.Y + textPadding }))
+                    {
+                        ChangeDirectory(dir);
+                    }
+
+                    ImGui.Text("/");
+                }
+            }
+            else
             {
                 List<DirectoryInfo> breadCrumbs = [];
                 var current = _currentDirectory;
@@ -282,6 +356,26 @@ public unsafe class Plugin : IPlugin
             foreach (var dir in directory.EnumerateDirectories())
             {
                 RenderDirectoryHierarchy(dir);
+            }
+
+            ImGui.TreePop();
+        }
+    }
+
+    private void RenderDirectoryHierarchy(ChunkNode node)
+    {
+        var open = ImGui.TreeNodeEx(node.Name, ImGuiTreeNodeFlags.SpanFullWidth);
+
+        if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+        {
+            ChangeDirectory(node);
+        }
+
+        if (open)
+        {
+            foreach (var child in node.Children.Values)
+            {
+                RenderDirectoryHierarchy(child);
             }
 
             ImGui.TreePop();
@@ -365,12 +459,136 @@ public unsafe class Plugin : IPlugin
         }
     }
 
+    private void RenderChunkItems()
+    {
+        _isAnyItemHovered = false;
+        
+        if (_currentChunkDirectory is null)
+            return;
+
+        var items = _currentChunkDirectory.Children.Values;
+
+        var hoveredCol = *ImGui.GetStyleColorVec4(ImGuiCol.ButtonHovered);
+
+        using var colors = new ScopedColorStack(
+            (ImGuiCol.Button, new Vector4()),
+            (ImGuiCol.ButtonHovered, hoveredCol with { W = 0.2f }),
+            (ImGuiCol.ButtonActive, (hoveredCol * 0.8f) with { W = 0.5f })
+        );
+
+        foreach (var item in items)
+        {
+            if (_searchString.Length > 0 && !item.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (item.IsFile)
+            {
+                RenderFile(item);
+            }
+            else
+            {
+                RenderDirectory(item);
+            }
+
+            // Allow dragging items
+            if (ImGui.BeginDragDropSource(ImGuiDragDropFlags.SourceAllowNullID))
+            {
+                if (_currentDragSource == 0)
+                {
+                    Log.Info("Allocating drag source");
+                    
+                    var relPath = item.FullName[6..];
+                    var pathNoExt = Path.Combine(Path.GetDirectoryName(relPath)!, Path.GetFileNameWithoutExtension(relPath));
+
+                    // The plugin that handles the drop will deallocate the payload
+                    var length = Encoding.UTF8.GetByteCount(pathNoExt);
+                    var payload = MemoryUtil.Alloc<byte>(length + 1);
+                    Encoding.UTF8.GetBytes(pathNoExt, new Span<byte>(payload, length));
+                    payload[length] = 0;
+
+                    _currentDragSource = (nint)payload;
+                    _currentDragSourceLength = (uint)length;
+                    _currentDragSourceString = item.FullName;
+                }
+
+                ImGui.SetDragDropPayload("AssetBrowser_Item", _currentDragSource, _currentDragSourceLength);
+
+                ImGui.Text(item.FullName);
+                ImGui.EndDragDropSource();
+            }
+            else
+            {
+                if (_currentDragSourceString == item.FullName && _currentDragSource != 0)
+                {
+                    Log.Info("Freeing drag source");
+
+                    MemoryUtil.Free((byte*)_currentDragSource);
+                    _currentDragSource = 0;
+                    _currentDragSourceLength = 0;
+                    _currentDragSourceString = "";
+                }
+            }
+
+            ImGui.NextColumn();
+        }
+    }
+
     private void RenderDirectory(DirectoryInfo directory)
     {
         var isHovered = ImGui.IsItemHovered();
         _isAnyItemHovered |= isHovered;
 
         using var _ = new ScopedId(directory.FullName);
+
+        ImGui.BeginGroup();
+        {
+            var text = directory.Name;
+            var drawList = ImGui.GetWindowDrawList();
+            var pos = ImGui.GetCursorScreenPos();
+            var textSize = ImGui.CalcTextSize(text);
+            var buttonSize = new Vector2(ThumbnailSize, ThumbnailSize + textSize.Y);
+            var clipRect = new ImRect
+            {
+                Min = pos + new Vector2(CellPadding),
+                Max = pos + buttonSize - new Vector2(CellPadding)
+            };
+
+            if (textSize.X > ThumbnailSize)
+                textSize.X = ThumbnailSize;
+
+            ImGui.AlignTextToFramePadding();
+            if (ImGui.Button("##dir_button", new Vector2(ThumbnailSize, ThumbnailSize + textSize.Y)))
+            {
+                ChangeDirectory(directory);
+            }
+
+            ShowTooltip(text);
+
+            drawList.AddImage(IconRepository.Folder, pos, pos + new Vector2(ThumbnailSize, ThumbnailSize));
+
+            ImGui.PushClipRect(clipRect.Min, clipRect.Max, true);
+
+            pos += new Vector2(0, ThumbnailSize);
+            drawList.AddText(
+                pos + new Vector2(ThumbnailSize / 2 - textSize.X / 2, -textSize.Y * 0.5f),
+                ImGui.GetColorU32(ImGuiCol.Text),
+                text
+            );
+
+            ImGui.PopClipRect();
+        }
+        ImGui.EndGroup();
+    }
+
+    private void RenderDirectory(ChunkNode directory)
+    {
+        if (directory.IsFile)
+            return;
+
+        var isHovered = ImGui.IsItemHovered();
+        _isAnyItemHovered |= isHovered;
+
+        using var _ = new ScopedId(directory.Name);
 
         ImGui.BeginGroup();
         {
@@ -459,6 +677,55 @@ public unsafe class Plugin : IPlugin
         ImGui.EndGroup();
     }
 
+    private void RenderFile(ChunkNode file)
+    {
+        if (!file.IsFile)
+            return;
+
+        var isHovered = ImGui.IsItemHovered();
+        _isAnyItemHovered |= isHovered;
+
+        using var _ = new ScopedId($"{file.Name}_F");
+
+        ImGui.BeginGroup();
+        {
+            var drawList = ImGui.GetWindowDrawList();
+            var pos = ImGui.GetCursorScreenPos();
+            var textSize = ImGui.CalcTextSize(file.Name);
+            var buttonSize = new Vector2(ThumbnailSize, ThumbnailSize + textSize.Y);
+            var clipRect = new ImRect
+            {
+                Min = pos + new Vector2(CellPadding),
+                Max = pos + buttonSize - new Vector2(CellPadding)
+            };
+
+            if (textSize.X > ThumbnailSize)
+                textSize.X = ThumbnailSize;
+
+            ImGui.AlignTextToFramePadding();
+            if (ImGui.Button("##file_button", buttonSize))
+            {
+
+            }
+
+            ShowTooltip(file.Name);
+
+            drawList.AddImage(IconRepository.File, pos, pos + new Vector2(ThumbnailSize, ThumbnailSize));
+
+            ImGui.PushClipRect(clipRect.Min, clipRect.Max, true);
+
+            pos += new Vector2(0, ThumbnailSize);
+            drawList.AddText(
+                pos + new Vector2(ThumbnailSize / 2 - textSize.X / 2, -textSize.Y * 0.5f),
+                ImGui.GetColorU32(ImGuiCol.Text),
+                file.Name
+            );
+
+            ImGui.PopClipRect();
+        }
+        ImGui.EndGroup();
+    }
+
     private void UpdateInput()
     {
 
@@ -480,6 +747,14 @@ public unsafe class Plugin : IPlugin
             return;
 
         _currentDirectory = directory;
+    }
+
+    private void ChangeDirectory(ChunkNode? node)
+    {
+        if (node is null)
+            return;
+
+        _currentChunkDirectory = node;
     }
 
     static void ShowTooltip(string text)
