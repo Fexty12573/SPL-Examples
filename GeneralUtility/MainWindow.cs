@@ -30,6 +30,9 @@ public partial class MainWindow : Form
         new Patch((nint)0x141fbb9ed, Enumerable.Repeat<byte>(0x90, 8).ToArray())
     ];
     private readonly Patch _plTransparencyResetPatch = new((nint)0x141F6D852, Enumerable.Repeat<byte>(0x90, 8).ToArray());
+    private bool _isRecordingSpeed = false;
+    private Vector3 _recordingStartPos = Vector3.Zero;
+    private DateTime _recordingStartTime = DateTime.Now;
 
     public Monster? SelectedMonster => (Monster?)cbSelectedMonster.SelectedItem;
 
@@ -501,6 +504,10 @@ public partial class MainWindow : Form
 
         tbMonsterTransparency.Value = (decimal)(SelectedMonster.GetTransparency() * 100);
         nudMonsterHealth.Value = (decimal)SelectedMonster.Health;
+
+        _isRecordingSpeed = false;
+        btnRecordSpeed.Text = @"Record Speed";
+        tbSpeedRecordingResult.Text = "";
     }
 
     private void cbLockTargetCoords_CheckedChanged(object sender, EventArgs e)
@@ -766,6 +773,41 @@ public partial class MainWindow : Form
             _coordUpdatePatches[0].Disable();
             _coordUpdatePatches[1].Disable();
             _coordUpdatePatches[2].Disable();
+        }
+    }
+
+    public void UpdateMonsterSpeed(float speed)
+    {
+        tbMonsterSpeed.Invoke(() =>
+        {
+            // Convert speed from cm/s to km/h
+            var kmh = speed * 0.036f;
+            lblMonsterSpeed.Text = $@"{kmh:000.00} km/h | {speed:.##} u/s";
+        });
+    }
+
+    private void btnRecordSpeed_Click(object sender, EventArgs e)
+    {
+        var selectedMonster = SelectedMonster;
+        if (selectedMonster is null)
+            return;
+
+        _isRecordingSpeed = !_isRecordingSpeed;
+        if (_isRecordingSpeed)
+        {
+            _recordingStartPos = selectedMonster.Position;
+            _recordingStartTime = DateTime.Now;
+            btnRecordSpeed.Text = @"Stop Recording";
+            tbSpeedRecordingResult.Text = "";
+        }
+        else
+        {
+            var deltaPos = selectedMonster.Position - _recordingStartPos;
+            // Calculate speed in cm/s (1 unit = 1 cm)
+            var speed = deltaPos.Length() / (float)(DateTime.Now - _recordingStartTime).TotalSeconds;
+            var kmh = speed * 0.036f;
+            tbSpeedRecordingResult.Text = $@"{kmh:000.00} km/h | {speed:.##} u/s";
+            btnRecordSpeed.Text = @"Record Speed";
         }
     }
 

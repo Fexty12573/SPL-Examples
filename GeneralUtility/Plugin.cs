@@ -22,6 +22,11 @@ public class Plugin : IPlugin
     public int OverrideActionId = 0;
     public bool LockOverrideAction = false;
 
+    private Vector3 _lastPos = Vector3.Zero;
+    private int _elapsedFrames = 0;
+    private float _elapsedTime = 0;
+    private Queue<float> _lastSpeeds = [];
+
     public Config Config { get; private set; } = null!;
     public Dictionary<MonsterType, ActionChain> ActionChains => [];
     public ConcurrentDictionary<Monster, Vector3> LockedCoordinates { get; } = [];
@@ -60,7 +65,30 @@ public class Plugin : IPlugin
         }
 
         var selectedMonster = _mainWindow.SelectedMonster;
-        if (selectedMonster is null || !_mainWindow.PlayerPosLocked)
+        if (selectedMonster is null)
+            return;
+
+        if (_elapsedFrames > 10)
+        {
+            var deltaPos = selectedMonster.Position - _lastPos;
+            var speed = deltaPos.Length() / _elapsedTime;
+            _lastSpeeds.Enqueue(speed);
+            if (_lastSpeeds.Count > 10)
+                _lastSpeeds.Dequeue();
+
+            _mainWindow.UpdateMonsterSpeed(_lastSpeeds.Average());
+
+            _lastPos = selectedMonster.Position;
+            _elapsedFrames = 0;
+            _elapsedTime = 0;
+        }
+        else
+        {
+            _elapsedTime += deltaTime;
+            _elapsedFrames++;
+        }
+
+        if (!_mainWindow.PlayerPosLocked)
             return;
 
         var player = Player.MainPlayer;

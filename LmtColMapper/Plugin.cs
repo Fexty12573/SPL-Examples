@@ -48,18 +48,6 @@ public unsafe class Plugin : IPlugin
         0xFDD75CA1,
     ];
 
-    public PluginData Initialize()
-    {
-        return new PluginData
-        {
-            OnImGuiRender = true,
-            OnMonsterCreate = true,
-            OnMonsterDestroy = true,
-            OnMonsterAction = true,
-            OnEntityAnimation = true,
-        };
-    }
-
     public void OnLoad()
     {
         var nopBytes = Enumerable.Repeat<byte>(0x90, 15).ToArray();

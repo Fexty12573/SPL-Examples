@@ -9,10 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="SharpPluginLoader.Core.Debug">
-      <HintPath>..\..\..\..\SteamLibrary\steamapps\common\Monster Hunter World\nativePC\plugins\CSharp\Loader\SharpPluginLoader.Core.Debug.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
+    <PackageReference Include="SharpPluginLoader.Core" Version="0.0.5" />
   </ItemGroup>
 
 </Project>

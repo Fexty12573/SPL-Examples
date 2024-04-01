@@ -28,6 +28,7 @@ partial class MainWindow
     /// </summary>
     private void InitializeComponent()
     {
+        var resources = new System.ComponentModel.ComponentResourceManager(typeof(MainWindow));
         label1 = new Label();
         cbSelectedMonster = new ComboBox();
         label2 = new Label();
@@ -41,6 +42,11 @@ partial class MainWindow
         cbMonsterFrozen = new CheckBox();
         cbDisableSpeedReset = new CheckBox();
         groupBox1 = new GroupBox();
+        label39 = new Label();
+        tbSpeedRecordingResult = new TextBox();
+        btnRecordSpeed = new Button();
+        lblMonsterSpeed = new Label();
+        label38 = new Label();
         label30 = new Label();
         tbMonsterSize = new NumericUpDown();
         label29 = new Label();
@@ -205,7 +211,7 @@ partial class MainWindow
         // label2
         // 
         label2.AutoSize = true;
-        label2.Location = new Point(524, 9);
+        label2.Location = new Point(589, 9);
         label2.Name = "label2";
         label2.Size = new Size(98, 15);
         label2.TabIndex = 2;
@@ -298,6 +304,11 @@ partial class MainWindow
         // 
         // groupBox1
         // 
+        groupBox1.Controls.Add(label39);
+        groupBox1.Controls.Add(tbSpeedRecordingResult);
+        groupBox1.Controls.Add(btnRecordSpeed);
+        groupBox1.Controls.Add(lblMonsterSpeed);
+        groupBox1.Controls.Add(label38);
         groupBox1.Controls.Add(label30);
         groupBox1.Controls.Add(tbMonsterSize);
         groupBox1.Controls.Add(label29);
@@ -332,6 +343,51 @@ partial class MainWindow
         groupBox1.TabIndex = 13;
         groupBox1.TabStop = false;
         groupBox1.Text = "Monster Options";
+        // 
+        // label39
+        // 
+        label39.AutoSize = true;
+        label39.Location = new Point(308, 208);
+        label39.Name = "label39";
+        label39.Size = new Size(39, 15);
+        label39.TabIndex = 42;
+        label39.Text = "Result";
+        // 
+        // tbSpeedRecordingResult
+        // 
+        tbSpeedRecordingResult.Location = new Point(152, 204);
+        tbSpeedRecordingResult.Name = "tbSpeedRecordingResult";
+        tbSpeedRecordingResult.ReadOnly = true;
+        tbSpeedRecordingResult.Size = new Size(150, 23);
+        tbSpeedRecordingResult.TabIndex = 41;
+        // 
+        // btnRecordSpeed
+        // 
+        btnRecordSpeed.Location = new Point(7, 204);
+        btnRecordSpeed.Name = "btnRecordSpeed";
+        btnRecordSpeed.Size = new Size(139, 23);
+        btnRecordSpeed.TabIndex = 40;
+        btnRecordSpeed.Text = "Record Speed";
+        btnRecordSpeed.UseVisualStyleBackColor = true;
+        btnRecordSpeed.Click += btnRecordSpeed_Click;
+        // 
+        // lblMonsterSpeed
+        // 
+        lblMonsterSpeed.AutoSize = true;
+        lblMonsterSpeed.Location = new Point(98, 177);
+        lblMonsterSpeed.Name = "lblMonsterSpeed";
+        lblMonsterSpeed.Size = new Size(98, 15);
+        lblMonsterSpeed.TabIndex = 39;
+        lblMonsterSpeed.Text = "0.0 km/h | 0.0 u/s";
+        // 
+        // label38
+        // 
+        label38.AutoSize = true;
+        label38.Location = new Point(7, 177);
+        label38.Name = "label38";
+        label38.Size = new Size(85, 15);
+        label38.TabIndex = 38;
+        label38.Text = "Current Speed:";
         // 
         // label30
         // 
@@ -1455,8 +1511,9 @@ partial class MainWindow
         Controls.Add(cbSelectedMonster);
         Controls.Add(label1);
         Controls.Add(groupBox2);
+        Icon = (Icon)resources.GetObject("$this.Icon");
         Name = "MainWindow";
-        Text = "MainWindow";
+        Text = "General Utility";
         groupBox1.ResumeLayout(false);
         groupBox1.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)tbMonsterSize).EndInit();
@@ -1620,4 +1677,9 @@ partial class MainWindow
     private Label label36;
     private CheckBox cbLockPlayerToEm;
     private CheckBox cbPlInvisible;
+    private Label label38;
+    private Label lblMonsterSpeed;
+    private Label label39;
+    private TextBox tbSpeedRecordingResult;
+    private Button btnRecordSpeed;
 }
