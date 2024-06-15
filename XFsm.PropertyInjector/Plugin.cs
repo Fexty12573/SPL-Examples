@@ -16,6 +16,7 @@ public class Plugin : IPlugin
 
     private NativeFunction<nint, nint> _newProperty;
     private unsafe sbyte* _mNameString = null;
+    private static nint _stringAllocator;
 
     #region AIFSMNode Name Property
 
@@ -71,7 +72,18 @@ public class Plugin : IPlugin
             new Patch(dtiNew + 55, [0x58], true), // Change allocation size to 0x58
             //new Patch(dtiNew + 128, [0x0F, 0x29, 0x43, 0x48], true), // movaps [rbx+0x48], xmm0
         ];
-        _aifsmNodeDtorHook = Hook.Create<MtObjectDtorDelegate>(0x142455540, (obj, flags) =>
+
+        var dummyInstance = dti.CreateInstance<MtObject>();
+        var vtable = *(nint**)dummyInstance.Instance;
+        dummyInstance.Destroy(true);
+
+        Log.Debug("cAIFSMNode Functions:");
+        Log.Debug($"  dtiNew: 0x{dtiNew:X}");
+        Log.Debug($"  vtable: 0x{(nint)vtable:X}");
+        Log.Debug($"  dtor: 0x{vtable[0]:X}");
+        Log.Debug($"  populatePropertyList: 0x{vtable[3]:X}");
+
+        _aifsmNodeDtorHook = Hook.Create<MtObjectDtorDelegate>(vtable[0], (obj, flags) =>
         {
             if ((flags & 1) != 0) // Check if the object is being deleted
             {
@@ -84,7 +96,7 @@ public class Plugin : IPlugin
 
             _aifsmNodeDtorHook.Original(obj, flags);
         });
-        _aifsmNodePopulatePropertyListHook = Hook.Create<PopulatePropertyListDelegate>(0x1424565a0, (obj, plist) =>
+        _aifsmNodePopulatePropertyListHook = Hook.Create<PopulatePropertyListDelegate>(vtable[3], (obj, plist) =>
         {
             _aifsmNodePopulatePropertyListHook.Original(obj, plist);
 
@@ -119,12 +131,23 @@ public class Plugin : IPlugin
         dti = MtDti.Find("cAIFSMLink");
         Ensure.NotNull(dti);
 
+        dummyInstance = dti.CreateInstance<MtObject>();
+        vtable = *(nint**)dummyInstance.Instance;
+        dummyInstance.Destroy(true);
+
         dtiNew = dti.GetVirtualFunction(1);
         _aifsmLinkAllocationPatches =
         [
             new Patch(dtiNew + 55, [0x20], true), // Change allocation size to 0x20
         ];
-        _aifsmLinkDtorHook = Hook.Create<MtObjectDtorDelegate>(0x1424554d0, (obj, flags) =>
+
+        Log.Debug("cAIFSMLink Functions:");
+        Log.Debug($"  dtiNew: 0x{dtiNew:X}");
+        Log.Debug($"  vtable: 0x{(nint)vtable:X}");
+        Log.Debug($"  dtor: 0x{vtable[0]:X}");
+        Log.Debug($"  populatePropertyList: 0x{vtable[3]:X}");
+
+        _aifsmLinkDtorHook = Hook.Create<MtObjectDtorDelegate>(vtable[0], (obj, flags) =>
         {
             if ((flags & 1) != 0) // Check if the object is being deleted
             {
@@ -137,7 +160,7 @@ public class Plugin : IPlugin
 
             _aifsmLinkDtorHook.Original(obj, flags);
         });
-        _aifsmLinkPopulatePropertyListHook = Hook.Create<PopulatePropertyListDelegate>(0x1424563b0, (obj, plist) =>
+        _aifsmLinkPopulatePropertyListHook = Hook.Create<PopulatePropertyListDelegate>(vtable[3], (obj, plist) =>
         {
             _aifsmLinkPopulatePropertyListHook.Original(obj, plist);
 
@@ -166,6 +189,14 @@ public class Plugin : IPlugin
             return result;
         });
 
+        var stringFunc = PatternScanner.FindFirst(Pattern.FromString("48 8B D9 48 8B FA 48 8B 09 48 8D 41 08 48 85 C9 75 07"));
+        Ensure.IsTrue(stringFunc != 0);
+        var readInstr = stringFunc + 49;
+        var readOffset = MemoryUtil.Read<int>(readInstr + 3);
+        _stringAllocator = readInstr + 7 + readOffset;
+
+        Log.Debug($"String Allocator found at 0x{_stringAllocator:X}");
+
         return;
 
         static unsafe void DeallocateString(MtString* str)
@@ -175,7 +206,7 @@ public class Plugin : IPlugin
 
             if (refCount == 1)
             {
-                var allocator = new MtAllocator(MemoryUtil.Read<nint>(0x143fdca50));
+                var allocator = new MtAllocator(MemoryUtil.Read<nint>(_stringAllocator));
                 allocator.Free((nint)str);
             }
         }

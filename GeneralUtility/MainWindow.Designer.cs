@@ -154,6 +154,7 @@ partial class MainWindow
         btnSetMonsterHealth = new Button();
         label23 = new Label();
         nudMonsterHealth = new NumericUpDown();
+        btnOpenAnimController = new Button();
         groupBox1.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)tbMonsterSize).BeginInit();
         ((System.ComponentModel.ISupportInitialize)tbMonsterRotW).BeginInit();
@@ -1306,9 +1307,9 @@ partial class MainWindow
         // 
         // btnReloadConfig
         // 
-        btnReloadConfig.Location = new Point(487, 27);
+        btnReloadConfig.Location = new Point(463, 27);
         btnReloadConfig.Name = "btnReloadConfig";
-        btnReloadConfig.Size = new Size(96, 23);
+        btnReloadConfig.Size = new Size(120, 23);
         btnReloadConfig.TabIndex = 17;
         btnReloadConfig.Text = "Reload Config";
         btnReloadConfig.UseVisualStyleBackColor = true;
@@ -1495,11 +1496,22 @@ partial class MainWindow
         nudMonsterHealth.Size = new Size(88, 23);
         nudMonsterHealth.TabIndex = 0;
         // 
+        // btnOpenAnimController
+        // 
+        btnOpenAnimController.Location = new Point(205, 27);
+        btnOpenAnimController.Name = "btnOpenAnimController";
+        btnOpenAnimController.Size = new Size(252, 23);
+        btnOpenAnimController.TabIndex = 20;
+        btnOpenAnimController.Text = "Open Animation Controller";
+        btnOpenAnimController.UseVisualStyleBackColor = true;
+        btnOpenAnimController.Click += btnOpenAnimController_Click;
+        // 
         // MainWindow
         // 
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1010, 826);
+        Controls.Add(btnOpenAnimController);
         Controls.Add(groupBox6);
         Controls.Add(groupBox5);
         Controls.Add(btnReloadConfig);
@@ -1514,6 +1526,7 @@ partial class MainWindow
         Icon = (Icon)resources.GetObject("$this.Icon");
         Name = "MainWindow";
         Text = "General Utility";
+        Load += MainWindow_Load;
         groupBox1.ResumeLayout(false);
         groupBox1.PerformLayout();
         ((System.ComponentModel.ISupportInitialize)tbMonsterSize).EndInit();
@@ -1682,4 +1695,5 @@ partial class MainWindow
     private Label label39;
     private TextBox tbSpeedRecordingResult;
     private Button btnRecordSpeed;
+    private Button btnOpenAnimController;
 }

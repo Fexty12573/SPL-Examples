@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SharpPluginLoader.Core.Resources;
 using SharpPluginLoader.Core.Entities;
+using SharpPluginLoader.Core.IO;
 using SharpPluginLoader.Core.Memory;
 
 namespace XFsm.ImGuiNodeEditor;
@@ -556,6 +557,10 @@ public static unsafe partial class InternalCalls
     [InternalCall(Pattern = "48 89 78 E0 48 8D B1 B0 76 00 00 4C 89 68 D8 45 33 C0", Offset = -20)]
     public static partial void ChangeWeapon(nint player, WeaponType weaponType, int weaponId);
     public static void ChangeWeapon(WeaponType weaponType, int weaponId) => ChangeWeapon(Player.MainPlayer!.Instance, weaponType, weaponId);
+
+    [InternalCall(Pattern = "48 81 ec 80 04 00 00 8b 42 08 49 8b d9 d1 e8", Offset = -11)]
+    public static partial bool SerializeBinary(nint serializer, nint stream, ushort version, nint proot,
+        SerializerMode mode, nint rootDti);
 
     public static void RegisterResource(Resource resource)
     {

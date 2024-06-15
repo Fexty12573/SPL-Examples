@@ -51,7 +51,18 @@ public unsafe class Plugin : IPlugin
 
         KeyBindings.AddKeybind(OpenKeybind, new Keybind<Key>(Key.A, [Key.LeftShift, Key.LeftAlt]));
 
-        var stringList = MemoryUtil.Read<nint>(0x1450f7748);
+        var stringListReadInstr = PatternScanner.FindFirst(Pattern.FromString("4C 03 35 ? ? ? ? EB 03 4C 8B F6 4C 8B AD E0 17 00 00"));
+        if (stringListReadInstr == 0)
+        {
+            Log.Error("Failed to find string list read instruction");
+            return;
+        }
+
+        var stringListReadOffset = MemoryUtil.Read<int>(stringListReadInstr + 3);
+        var stringList = MemoryUtil.Read<nint>(stringListReadInstr + 7 + stringListReadOffset);
+        Log.Debug($"String list: 0x{stringList:X}");
+
+        //var stringList = MemoryUtil.Read<nint>(0x1450f7748);
         List<string> paths = [];
 
         while (MemoryUtil.Read<byte>(stringList) != 0)
@@ -87,6 +98,11 @@ public unsafe class Plugin : IPlugin
         if (!Renderer.MenuShown || !_assetBrowserOpen)
             return;
 
+        var minSize = ImGui.GetStyle().WindowMinSize;
+        using var minWindowSizeStyle = new ScopedStyle(ImGuiStyleVar.WindowMinSize, minSize with { X = 600 });
+
+        ImGui.SetNextWindowSize(new Vector2(800, 600), ImGuiCond.FirstUseEver);
+
         if (!ImGui.Begin("Asset Browser", ref _assetBrowserOpen, ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar))
         {
             ImGui.End();
@@ -111,7 +127,7 @@ public unsafe class Plugin : IPlugin
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
 
-            ImGui.BeginChild("##folders_common");
+            ImGui.BeginChild("##folders_common", new Vector2(), ImGuiChildFlags.None, ImGuiWindowFlags.NoResize);
             {
                 using var spacing = new ScopedStyle(ImGuiStyleVar.ItemSpacing, new Vector2(0, 0));
                 using var itemBg = new ScopedColorStack(
@@ -132,17 +148,14 @@ public unsafe class Plugin : IPlugin
                 }
             }
             ImGui.EndChild();
-
+            
             ImGui.TableSetColumnIndex(1);
 
             var avail = ImGui.GetContentRegionAvail();
 
             const float topBarHeight = 26f;
             const float bottomBarHeight = 32f;
-            var size = new Vector2(
-                avail.X,
-                ImGui.GetWindowHeight() - topBarHeight - bottomBarHeight
-            );
+            var size = avail with { Y = ImGui.GetWindowHeight() - topBarHeight - bottomBarHeight };
 
             ImGui.BeginChild("##directory_structure", size);
             {
@@ -165,7 +178,7 @@ public unsafe class Plugin : IPlugin
                         const float cellSize = CellSize + paddingForOutline + CellPadding;
                         var columns = (int)(panelWidth / cellSize);
 
-                        if (columns > 0)
+                        if (columns > 1)
                         {
                             const float rowSpacing = 12f;
                             using var spacing = new ScopedStyle(

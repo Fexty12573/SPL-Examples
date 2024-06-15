@@ -42,6 +42,7 @@ public class Plugin : IPlugin
 
     private Hook<SetTargetPositionDelegate> _setTargetPositionHook = null!;
     private Hook<InputUpdateDelegate> _inputUpdateHook = null!;
+    private Hook<DoAnimationDelegate> _doAnimationHook = null!;
 
     public void OnLoad()
     {
@@ -49,6 +50,7 @@ public class Plugin : IPlugin
 
         _setTargetPositionHook = Hook.Create<SetTargetPositionDelegate>(0x141393ba0, SetTargetPositionHook);
         _inputUpdateHook = Hook.Create<InputUpdateDelegate>(0x141b15af0, InputUpdateHook);
+        _doAnimationHook = Hook.Create<DoAnimationDelegate>(0x142246990, DoAnimationHook);
         _mainWindow = new MainWindow(this);
 
         Log.Info("Starting WinForms Thread");
@@ -95,7 +97,8 @@ public class Plugin : IPlugin
         if (player is null)
             return;
 
-        player.Teleport(selectedMonster.Position + _mainWindow.PlayerPosOffset);
+        var pos = (selectedMonster.Position + _mainWindow.PlayerPosOffset) with { Y = player.Position.Y };
+        player.Teleport(pos);
     }
 
     public void OnMonsterCreate(Monster monster)
@@ -145,6 +148,13 @@ public class Plugin : IPlugin
             return;
 
         _mainWindow.SetActionAnimation(monster.GetCurrentAction(), animationId);
+
+        if (_mainWindow.AnimationController.LockAnimation)
+        {
+            animationId = _mainWindow.AnimationController.OverrideAnimationId;
+            startFrame = _mainWindow.AnimationController.OverrideStartFrame;
+            interFrame = _mainWindow.AnimationController.OverrideInterpolationFrames;
+        }
     }
 
     public void LockCoordinates(Monster monster)
@@ -216,6 +226,27 @@ public class Plugin : IPlugin
             axis.Y = _mainWindow.StickY;
     }
 
+    public bool DoAnimationHook(nint animComponent, int layer, int modIndex, uint animId, float interpFrame,
+        float startFrame, float speed, ulong attr)
+    {
+        var animLayer = new AnimationLayerComponent(animComponent);
+        if (!_mainWindow.IsSelectedMonster(animLayer.Owner!) 
+            || !_mainWindow.AnimationController.LockAnimation
+            || !_mainWindow.AnimationController.HardOverride)
+            return _doAnimationHook.Original(animComponent, layer, modIndex, animId, interpFrame, startFrame, speed, attr);
+
+        var animController = _mainWindow.AnimationController;
+
+        return _doAnimationHook.Original(
+            animComponent, layer, modIndex,
+            animController.OverrideAnimationId.FullId,
+            animController.OverrideInterpolationFrames,
+            animController.OverrideStartFrame,
+            animController.OverrideStartSpeed,
+            attr
+        );
+    }
+
     [STAThread]
     public static void WinformsRun()
     {
@@ -229,4 +260,6 @@ public class Plugin : IPlugin
 
     public delegate void SetTargetPositionDelegate(nint actionParams, int index, ref Vector3 pos);
     public delegate void InputUpdateDelegate(nint pad);
+    public delegate bool DoAnimationDelegate(nint animComponent, int layer, int modIndex, uint animId, float interpFrame,
+        float startFrame, float speed, ulong attr);
 }

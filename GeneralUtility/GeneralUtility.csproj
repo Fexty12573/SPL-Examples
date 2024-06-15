@@ -14,7 +14,7 @@
 		<FrameworkReference Include="Microsoft.WindowsDesktop.App" />
 	</ItemGroup>
 	<ItemGroup>
-	  <PackageReference Include="SharpPluginLoader.Core" Version="0.0.5" />
+	  <PackageReference Include="SharpPluginLoader.Core" Version="0.0.6" />
 	</ItemGroup>
 
 </Project>

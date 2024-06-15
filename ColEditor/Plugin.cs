@@ -283,7 +283,6 @@ public partial class Plugin : IPlugin
     public void OnImGuiFreeRender()
     {
 
-#if DEBUG
         if (_selectedModel is not null)
         {
             var bgDrawList = ImGui.GetBackgroundDrawList();
@@ -292,11 +291,12 @@ public partial class Plugin : IPlugin
             {
                 if (_mainViewport.WorldToScreen(joint.Position, out var screenPos))
                 {
-                    var pos = new Vector2(screenPos.X + 10, screenPos.Y);
+                    var pos = screenPos with { X = screenPos.X + 10 };
                     bgDrawList.AddText(font, _textSize, pos, MtColor.FromVector4(_textColor), joint.Id.ToString());
                 }
             }
 
+#if DEBUG
             if (_selectedModel.Is("uCharacterModel"))
             {
                 var stageAdjustCollision = _selectedModel.Instance + 0xA40;
@@ -332,8 +332,8 @@ public partial class Plugin : IPlugin
                     bgDrawList.AddLine(screenCorners[i], screenCorners[i + 4], new MtColor(255, 0, 0, 255), 2);
                 }
             }
-        }
 #endif
+        }
 
         if (!Renderer.MenuShown)
             return;

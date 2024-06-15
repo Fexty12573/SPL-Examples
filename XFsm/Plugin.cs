@@ -199,11 +199,11 @@ public partial class Plugin : IPlugin
                         var serializer = new MtSerializer();
                         //serializer.SerializeBinary(fs, file, 0xE05);
 
-                        var serializeBinary = new NativeFunction<nint, nint, ushort, nint, SerializerMode, nint, bool>(0x14219c0c0);
+                        var serializeBinary = new NativeFunction<nint, nint, ushort, nint, SerializerMode, nint, bool>(0x14219c120);
                         unsafe
                         {
                             var serializerPtr = &serializer;
-                            serializeBinary.Invoke(
+                            InternalCalls.SerializeBinary(
                                 (nint)serializerPtr,
                                 fs.Instance,
                                 0xE05,
@@ -211,6 +211,14 @@ public partial class Plugin : IPlugin
                                 SerializerMode.State,
                                 0
                             );
+                            //serializeBinary.Invoke(
+                            //    (nint)serializerPtr,
+                            //    fs.Instance,
+                            //    0xE05,
+                            //    file.Instance,
+                            //    SerializerMode.State,
+                            //    0
+                            //);
                         }
                     }
                 }

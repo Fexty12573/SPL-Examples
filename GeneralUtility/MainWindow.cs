@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Linq;
 using System.Media;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -25,15 +26,16 @@ public partial class MainWindow : Form
     private readonly NativeFunction<int, int, nint, nint> _spawnGimmickFunc;
     private readonly Patch[] _coordUpdatePatches =
     [
-        new Patch((nint)0x141fbb9d7, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
-        new Patch((nint)0x141fbb9e5, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
-        new Patch((nint)0x141fbb9ed, Enumerable.Repeat<byte>(0x90, 8).ToArray())
+        new Patch((nint)0x141fbba37, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
+        new Patch((nint)0x141fbba45, Enumerable.Repeat<byte>(0x90, 8).ToArray()),
+        new Patch((nint)0x141fbba4d, Enumerable.Repeat<byte>(0x90, 8).ToArray())
     ];
-    private readonly Patch _plTransparencyResetPatch = new((nint)0x141F6D852, Enumerable.Repeat<byte>(0x90, 8).ToArray());
+    private readonly Patch _plTransparencyResetPatch = new((nint)0x141f6d8b2, Enumerable.Repeat<byte>(0x90, 8).ToArray());
     private bool _isRecordingSpeed = false;
     private Vector3 _recordingStartPos = Vector3.Zero;
     private DateTime _recordingStartTime = DateTime.Now;
 
+    public AnimationController AnimationController { get; set; }
     public Monster? SelectedMonster => (Monster?)cbSelectedMonster.SelectedItem;
 
     public bool StickXLocked => cbLockStickX.Checked;
@@ -72,6 +74,8 @@ public partial class MainWindow : Form
 
         _updateThread = new Thread(UpdateThread);
         _updateThread.Start();
+
+        AnimationController = new AnimationController(this, plugin);
     }
 
     public bool IsSelectedMonster(Entity entity)
@@ -808,6 +812,19 @@ public partial class MainWindow : Form
             var kmh = speed * 0.036f;
             tbSpeedRecordingResult.Text = $@"{kmh:000.00} km/h | {speed:.##} u/s";
             btnRecordSpeed.Text = @"Record Speed";
+        }
+    }
+
+    private void MainWindow_Load(object sender, EventArgs e)
+    {
+        AnimationController.Show();
+    }
+
+    private void btnOpenAnimController_Click(object sender, EventArgs e)
+    {
+        if (!AnimationController.Visible)
+        {
+            AnimationController.Show();
         }
     }
 
