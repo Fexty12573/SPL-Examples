@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿#define USELOCAL // Comment this line to use the release XFsm.dll
+
+using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -11,6 +13,7 @@ using SharpPluginLoader.Core.Memory;
 using SharpPluginLoader.Core.Rendering;
 using XFsm.ImGuiNodeEditor;
 using SharpPluginLoader.Core.Entities;
+
 
 namespace XFsm;
 
@@ -25,6 +28,9 @@ public partial class Plugin : IPlugin
     private string _lastOpenedPath = "";
     private string _saveToPath = "";
     private AIFSM? _pendingFsm;
+
+    private bool _openDiffPopup = false;
+    private string[] _lastDiff = [];
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     private static partial nint AddDllDirectory(string dir);
@@ -330,6 +336,86 @@ public partial class Plugin : IPlugin
                 ImGui.CloseCurrentPopup();
             }
 
+            ImGui.Separator();
+
+            if (ImGui.Button("Perform Diff"))
+            {
+                var differences = FsmDiffer.Diff(_editor.Fsm!, _pendingFsm!);
+                ImGui.CloseCurrentPopup();
+
+                _openDiffPopup = true;
+                _lastDiff = differences;
+            }
+
+            ImGui.EndPopup();
+        }
+
+        if (_openDiffPopup)
+        {
+            ImGui.OpenPopup(_lastDiff.Length == 0 ? "No Differences" : "Differences");
+            _openDiffPopup = false;
+        }
+
+        if (ImGui.BeginPopupModal("No Differences"))
+        {
+            ImGui.Text("The two FSMs are (functionally) identical.");
+            ImGui.EndPopup();
+        }
+
+        if (ImGui.BeginPopupModal("Differences"))
+        {
+            ImGui.Text("The two FSMs have the following differences:");
+
+            if (ImGui.BeginListBox("Differences"))
+            {
+                foreach (var diff in _lastDiff)
+                {
+                    ImGui.Selectable(diff);
+                }
+
+                ImGui.EndListBox();
+            }
+
+            ImGui.Separator();
+
+            ImGui.TextWrapped("""
+                              Notes:
+                              - 'FSM 1' refers to the FSM that is currently open in the editor.
+                              - 'FSM 2' refers to the FSM that was dragged and dropped onto the editor (or opened).
+                              - Some things are not compared, such as the FSM's name, owner object name, etc.
+                              - Nodes and conditions are always referred to by their name.
+                              - Links, processes, and child conditions are referred to by a 0-based index.
+                              """);
+
+            if (ImGui.Button("Save to File"))
+            {
+                var dlg = new SaveFileDialog
+                {
+                    DefaultExt = ".txt",
+                    Filter = "Text Files|*.txt",
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllLines(dlg.FileName, _lastDiff);
+                }
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Copy to Clipboard"))
+            {
+                ImGui.SetClipboardText(string.Join(Environment.NewLine, _lastDiff));
+                ImGuiExtensions.NotificationInfo("Copied to clipboard.");
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Close"))
+            {
+                ImGui.CloseCurrentPopup();
+            }
+
             ImGui.EndPopup();
         }
 
@@ -342,7 +428,11 @@ public partial class Plugin : IPlugin
         var existing = ResourceManager.GetResource<AIFSM>(
             GetGameCompatiblePath(path),
             _fsmDti,
+#if USELOCAL
+            LoadFlags.NoLoad
+#else
             0x10
+#endif
         );
 
         if (existing is not null)

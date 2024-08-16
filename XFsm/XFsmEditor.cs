@@ -350,7 +350,10 @@ public class XFsmEditor
             {
                 var link = GetLinkFrom(pin);
                 pin.BackingLink.DestinationNodeId = link?.Target.Parent.BackingNode.Id ?? 0;
+                pin.BackingLink.Name = pin.Name;
             }
+
+            node.BackingNode.Name = node.Name;
         }
     }
 

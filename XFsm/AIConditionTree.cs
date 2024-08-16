@@ -167,7 +167,7 @@ public class AIConditionTreeNode : MtObject
         if (index < 0 || index >= ChildCount)
             throw new ArgumentOutOfRangeException(nameof(index));
 
-        Children[index].Destroy(true);
+        Children[index]?.Destroy(true);
         Children[index] = node;
     }
 
