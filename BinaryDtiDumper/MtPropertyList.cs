@@ -23,6 +23,6 @@ internal unsafe struct MtPropertyList : IDisposable
         Dtor.Invoke(MemoryUtil.AddressOf(ref this));
     }
 
-    private static readonly NativeAction<nint> Ctor = new(0x142170540);
-    private static readonly NativeAction<nint> Dtor = new(0x142170560);
+    private static readonly NativeAction<nint> Ctor = new(0x142171920);
+    private static readonly NativeAction<nint> Dtor = new(0x142171940);
 }

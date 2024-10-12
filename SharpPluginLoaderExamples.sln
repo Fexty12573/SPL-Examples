@@ -30,9 +30,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XFsm.PropertyInjector", "XF
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AssetBrowser", "AssetBrowser\AssetBrowser.csproj", "{888FB9CD-88A6-4950-9FB2-0F6E255C9D1A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShellLogger", "ShellLogger\ShellLogger.csproj", "{C72C1775-3DF6-4DEA-AF8D-B002E064A301}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ShellLogger", "ShellLogger\ShellLogger.csproj", "{C72C1775-3DF6-4DEA-AF8D-B002E064A301}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryDtiDumper", "BinaryDtiDumper\BinaryDtiDumper.csproj", "{D89A5A70-7DF1-4C82-BEC3-99270C30D1C6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryDtiDumper", "BinaryDtiDumper\BinaryDtiDumper.csproj", "{D89A5A70-7DF1-4C82-BEC3-99270C30D1C6}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BinaryDtiDumper.Native", "BinaryDtiDumper.Native\BinaryDtiDumper.Native.vcxproj", "{E181DBA0-4C7A-40E1-B831-663A639897B9}"
 EndProject

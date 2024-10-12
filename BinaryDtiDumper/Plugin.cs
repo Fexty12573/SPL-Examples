@@ -25,6 +25,46 @@ internal class DtiClass(string name, List<DtiField> fields, MtDti instance)
     public List<nint> ChildrenPointers { get; } = [];
 }
 
+internal class DtiType
+{
+    public string Name { get; set; }
+    public nint Vtable { get; set; }
+    public MtDti Dti { get; }
+    public List<DtiProperty> Properties { get; }
+
+    public string GetInheritanceString()
+    {
+        var sb = new StringBuilder();
+        sb.Append(Dti.Name);
+        var parent = Dti.Parent;
+        while (parent != null)
+        {
+            sb.Append(", ");
+            sb.Append(parent.Name);
+            parent = parent.Parent;
+        }
+
+        return sb.ToString();
+    }
+
+    public unsafe DtiType(MtDti dti, MtPropertyList* propList, nint vtable)
+    {
+        Name = dti.Name;
+        Vtable = vtable;
+        Dti = dti;
+        Properties = [];
+
+        var prop = propList->First;
+        while (prop != null)
+        {
+            Properties.Add(new DtiProperty(prop));
+            prop = prop->Next;
+        }
+
+        Properties.Sort((a, b) => a.Offset.CompareTo(b.Offset));
+    }
+}
+
 public class Plugin : IPlugin
 {
     public string Name => "Binary DTI Dumper";
@@ -37,6 +77,8 @@ public class Plugin : IPlugin
     private readonly List<byte> _stringTable = [];
     private readonly List<string> _failedDti = [];
 
+    private readonly List<DtiType> _dtiTypes = [];
+
     private readonly HashSet<string> _dtiBlackList =
     [
         "MtNetServiceError",
@@ -47,7 +89,8 @@ public class Plugin : IPlugin
     {
         try
         {
-            Task.Run(DumpDti);
+            //Task.Run(DumpDti);
+            Task.Run(DumpDtiPlainText);
         }
         catch (Exception e)
         {
@@ -111,6 +154,98 @@ public class Plugin : IPlugin
         _stringTable.Clear();
     }
 
+    private void DumpDtiPlainText()
+    {
+        Log.Info("Dumping DTI classes (Plain Text)...");
+
+        var dti = MtDti.Find("MtObject");
+        if (dti is null)
+        {
+            Log.Error("Failed to find MtObject DTI");
+            return;
+        }
+
+        DumpDtiPlainText(dti);
+
+        _dtiTypes.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
+
+        using var writer = new StreamWriter("dti_dump.h");
+        writer.WriteLine($"// Fexty's MHW DTI Dump log [{DateTime.Now}] (Inspired by Ando's DTI Dumper)");
+        writer.WriteLine();
+        writer.WriteLine();
+
+        foreach (var type in _dtiTypes)
+        {
+            writer.WriteLine($"// {type.Name} vftable:0x{type.Vtable:X}, Size:0x{type.Dti.Size:X}, CRC32:0x{type.Dti.Id:X}");
+
+            var inheritance = type.GetInheritanceString();
+            writer.WriteLine(!string.IsNullOrEmpty(inheritance)
+                ? $"class {type.Name} /*: {inheritance}*/ {{"
+                : $"class {type.Name} /**/ {{");
+
+            foreach (var prop in type.Properties)
+            {
+                if (prop.Comment is not null)
+                {
+                    writer.WriteLine($"    // Comment: {prop.Comment}");
+                }
+
+                var typeAndName = $"{prop.GetTypeName()} '{prop.Name}'";
+                var offset = prop.Offset;
+                if (offset < 0 || offset > type.Dti.Size)
+                {
+                    offset = long.MaxValue;
+                }
+
+                if (prop.IsArray)
+                {
+                    if (prop.IsProperty)
+                    {
+                        var varString = $"{typeAndName}[*]";
+                        writer.WriteLine($"    {varString,-50}; // Offset:0x{offset:X}, DynamicArray, Getter:0x{prop.Get:X}, Setter:0x{prop.SetData:X}, GetCount:0x{prop.GetCount:X}, Reallocate:0x{prop.SetCount:X}, CRC32:0x{prop.Hash:X}, Flags:0x{prop.Flags:X}");
+                    }
+                    else
+                    {
+                        var varString = $"{typeAndName}[{prop.Count}]";
+                        writer.WriteLine($"    {varString,-50}; // Offset:0x{offset:X}, Array, CRC32:0x{prop.Hash:X}, Flags:0x{prop.Flags:X}");
+                    }
+                }
+                else if (prop.IsProperty)
+                {
+                    writer.WriteLine($"    {typeAndName,-50}; // Offset:0x{offset:X}, PSEUDO-PROP, Getter:0x{prop.Get:X}, Setter:0x{prop.SetData:X}, CRC32:0x{prop.Hash:X}, Flags:0x{prop.Flags:X}");
+                }
+                else
+                {
+                    writer.WriteLine($"    {typeAndName,-50}; // Offset:0x{offset:X}, Var, CRC32:0x{prop.Hash:X}, Flags:0x{prop.Flags:X}");
+                }
+            }
+
+            writer.WriteLine("};");
+            writer.WriteLine();
+        }
+
+        writer.WriteLine("// END OF FILE");
+        writer.Flush();
+
+        Log.Info("Dumped DTI classes to dti_dump.h");
+    }
+
+    private unsafe void DumpDtiPlainText(MtDti dti)
+    {
+        Log.Info($"Dumping {dti.Name}");
+
+        var type = DumpDataPlainText(dti);
+        if (type is not null)
+        {
+            _dtiTypes.Add(type);
+        }
+
+        foreach (var childDti in dti.Children)
+        {
+            DumpDtiPlainText(childDti);
+        }
+    }
+
     private void ResolveHierarchy()
     {
         foreach (var dtiClass in _dtiList)
@@ -143,6 +278,58 @@ public class Plugin : IPlugin
         }
     }
 
+    private unsafe DtiType? DumpDataPlainText(MtDti dti)
+    {
+        if (_dtiBlackList.Contains(dti.Name))
+        {
+            _failedDti.Add(dti.Name);
+            return null;
+        }
+
+        var obj = InstantiateObject(dti, out var isSingleton);
+
+        if (obj is null || obj.Instance == 0 || obj.Get<nint>(0) == 0)
+        {
+            _failedDti.Add(dti.Name);
+            return null;
+        }
+
+        var vtable = obj.Get<nint>(0);
+
+        using var propList = new MtPropertyList();
+        try
+        {
+            if (!Helpers.PopulatePropertyList(obj.Instance, &propList, obj.GetVirtualFunction(3)))
+            {
+                throw new Exception("Access Violation thrown");
+            }
+        }
+        catch (Exception e)
+        {
+            _failedDti.Add(dti.Name);
+            Log.Error($"Failed to populate property list of {dti.Name}:");
+            Log.Error(e.Message);
+
+            if (!isSingleton)
+            {
+                obj.Destroy(false);
+                NativeMemory.AlignedFree((void*)obj.Instance);
+            }
+
+            return null;
+        }
+
+        var type = new DtiType(dti, &propList, vtable);
+
+        if (!isSingleton)
+        {
+            obj.Destroy(false);
+            NativeMemory.AlignedFree((void*)obj.Instance);
+        }
+
+        return type;
+    }
+
     private unsafe List<DtiField> DumpFields(MtDti dti)
     {
         List<DtiField> fields = [];
@@ -153,41 +340,7 @@ public class Plugin : IPlugin
             return fields;
         }
         
-        MtObject? obj;
-        var isSingleton = false;
-        if (dti.InheritsFrom("cSystem"))
-        {
-            obj = GetSingletonInstance(dti);
-            isSingleton = true;
-        }
-        else
-        {
-            try
-            {
-                obj = new MtObject((nint)NativeMemory.AlignedAlloc(dti.Size, 0x10));
-                if (obj.Instance == 0)
-                {
-                    obj = null;
-                }
-
-                if (obj is not null)
-                {
-                    NativeMemory.Clear((void*)obj.Instance, dti.Size);
-                    var result = Helpers.TryInstantiateObject(obj.Instance, dti.Instance, dti.GetVirtualFunction(2));
-                    if (result == 0)
-                    {
-                        NativeMemory.AlignedFree((void*)obj.Instance);
-                        obj = null;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                obj = null;
-                Log.Error($"Failed to create instance of {dti.Name}:");
-                Log.Error(e.Message);
-            }
-        }
+        var obj = InstantiateObject(dti, out var isSingleton);
 
         if (obj is null || obj.Instance == 0)
         {
@@ -248,6 +401,47 @@ public class Plugin : IPlugin
         }
 
         return fields;
+    }
+
+    private static unsafe MtObject? InstantiateObject(MtDti dti, out bool isSingleton)
+    {
+        MtObject? obj;
+        isSingleton = false;
+        if (dti.InheritsFrom("cSystem"))
+        {
+            obj = GetSingletonInstance(dti);
+            isSingleton = true;
+        }
+        else
+        {
+            try
+            {
+                obj = new MtObject((nint)NativeMemory.AlignedAlloc(dti.Size, 0x10));
+                if (obj.Instance == 0)
+                {
+                    obj = null;
+                }
+
+                if (obj is not null)
+                {
+                    NativeMemory.Clear((void*)obj.Instance, dti.Size);
+                    var result = Helpers.TryInstantiateObject(obj.Instance, dti.Instance, dti.GetVirtualFunction(2));
+                    if (result == 0)
+                    {
+                        NativeMemory.AlignedFree((void*)obj.Instance);
+                        obj = null;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                obj = null;
+                Log.Error($"Failed to create instance of {dti.Name}:");
+                Log.Error(e.Message);
+            }
+        }
+
+        return obj;
     }
 
     private static MtObject? GetSingletonInstance(MtDti dti)
